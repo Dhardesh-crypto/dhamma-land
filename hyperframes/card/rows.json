@@ -1,0 +1,11 @@
+{"rows":[
+{"name":"card-1","num":"1","th":"พบเณรต้นบุญ","en":"Meet Tonboon","color":"#f28a1a","pose":"assets/img/nen-wave.webp"},
+{"name":"card-2","num":"2","th":"เจ้าชายผู้ตื่น","en":"The Prince Who Woke Up","color":"#e2a90f","pose":"assets/img/nen-think.webp"},
+{"name":"card-3","num":"3","th":"แก้ว 3 ดวง","en":"Three Jewels","color":"#3d8fd1","pose":"assets/img/nen-think.webp"},
+{"name":"card-4","num":"4","th":"ศีล 5","en":"Five Precepts","color":"#3f9a52","pose":"assets/img/nen-wave.webp"},
+{"name":"card-5","num":"5","th":"สายพิณพอดี","en":"The Just-Right String","color":"#f27aa0","pose":"assets/img/nen-think.webp"},
+{"name":"card-6","num":"6","th":"ใจลูกหมา","en":"Puppy Mind","color":"#45a9d8","pose":"assets/img/nen-meditate.webp"},
+{"name":"card-7","num":"7","th":"คุณหมอเณร","en":"Doctor Novice","color":"#f28a1a","pose":"assets/img/nen-think.webp"},
+{"name":"card-8","num":"8","th":"สวนแห่งกรรม","en":"The Karma Garden","color":"#3f9a52","pose":"assets/img/nen-wave.webp"},
+{"name":"card-9","num":"9","th":"สอบบัณฑิตน้อย","en":"Final Challenge","color":"#e2a90f","pose":"assets/img/nen-jump.webp"}
+]}

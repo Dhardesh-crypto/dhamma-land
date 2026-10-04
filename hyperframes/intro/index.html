@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1280, height=720" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Itim"; src: url("assets/fonts/Itim-Regular.ttf") format("truetype"); }
+      @font-face { font-family: "Mali"; src: url("assets/fonts/Mali-SemiBold.ttf") format("truetype"); font-weight: 600; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1280px; height: 720px; overflow: hidden; background: #fff6e4; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Mali", sans-serif; color: #2c1a0e; }
+      .clip { position: absolute; inset: 0; }
+
+      /* background */
+      #bg-wrap { position: absolute; inset: 0; overflow: hidden; }
+      #bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+      #shade { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(255, 246, 228, 0) 55%, rgba(255, 246, 228, .55)); }
+
+      /* petals */
+      .petal { position: absolute; width: 34px; height: 34px; display: block; }
+      .petal path { fill: #f27aa0; stroke: #2c1a0e; stroke-width: 2.5; }
+
+      /* title */
+      #title-box { position: absolute; left: 0; right: 0; top: 70px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+      #title-card { display: flex; gap: 0; padding: 18px 40px 22px; background: #fffdf7; border: 6px solid #2c1a0e; border-radius: 34px; box-shadow: 10px 10px 0 #2c1a0e; }
+      .tw { display: block; font-family: "Itim", sans-serif; font-size: 112px; line-height: 1.15; color: #f28a1a; -webkit-text-stroke: 3px #2c1a0e; paint-order: stroke fill; }
+      #title-en { display: block; font-family: "Itim", sans-serif; font-size: 40px; background: #f7c843; border: 4px solid #2c1a0e; border-radius: 999px; padding: 2px 28px; box-shadow: 5px 5px 0 #2c1a0e; }
+
+      /* cast */
+      #nen { position: absolute; left: 70px; bottom: -10px; height: 560px; width: auto; display: block; }
+      #tup { position: absolute; right: 120px; bottom: 20px; height: 330px; width: 330px; object-fit: contain; display: block; }
+      .bubble { position: absolute; display: block; background: #fffdf7; border: 5px solid #2c1a0e; border-radius: 30px; padding: 16px 28px; box-shadow: 7px 7px 0 #2c1a0e; max-width: 620px; }
+      .bubble .th { display: block; white-space: nowrap; font-family: "Itim", sans-serif; font-size: 46px; line-height: 1.2; }
+      .bubble .en { display: block; font-size: 24px; color: #6b5442; }
+      #b-nen { left: 400px; top: 320px; }
+      #b-tup { right: 400px; top: 300px; background: #fff0d6; }
+
+      /* story cards */
+      #cards { display: flex; align-items: center; justify-content: center; gap: 26px; }
+      .card { display: flex; flex-direction: column; width: 270px; background: #fffdf7; border: 5px solid #2c1a0e; border-radius: 22px; box-shadow: 8px 8px 0 #2c1a0e; overflow: hidden; }
+      .card img { display: block; width: 100%; height: 200px; object-fit: cover; border-bottom: 5px solid #2c1a0e; }
+      .card span { display: block; font-family: "Itim", sans-serif; font-size: 30px; text-align: center; padding: 8px 6px 10px; }
+      #cards-head { position: absolute; top: 64px; left: 0; right: 0; display: flex; justify-content: center; }
+      #cards-head span { display: block; font-family: "Itim", sans-serif; font-size: 50px; background: #fffdf7; border: 5px solid #2c1a0e; border-radius: 999px; padding: 4px 36px; box-shadow: 7px 7px 0 #2c1a0e; color: #2c1a0e; }
+
+      /* finale */
+      #burst { position: absolute; left: 790px; top: 260px; width: 1400px; height: 1400px; margin: -700px 0 0 -700px; display: block; }
+      #burst path { fill: #f7c843; opacity: .55; }
+      #big-lotus { position: absolute; left: 790px; top: 250px; width: 360px; height: 360px; margin: -180px 0 0 -180px; display: block; overflow: visible; }
+      #big-lotus path { stroke: #2c1a0e; stroke-width: 2; stroke-linejoin: round; }
+      .p-back { fill: #f27aa0; } .p-mid { fill: #ff8fb1; } .p-front { fill: #ffb3c9; }
+      #final-text { position: absolute; left: 400px; right: 60px; bottom: 60px; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 20px 18px; background: #fffdf7; border: 5px solid #2c1a0e; border-radius: 30px; box-shadow: 8px 8px 0 #2c1a0e; }
+      #final-th { display: block; font-family: "Itim", sans-serif; font-size: 64px; color: #f28a1a; -webkit-text-stroke: 3px #2c1a0e; paint-order: stroke fill; }
+      #final-en { display: block; font-size: 28px; color: #6b5442; }
+      #jump { position: absolute; left: 10px; bottom: -10px; width: 420px; height: 420px; object-fit: contain; display: block; }
+      #calm { position: absolute; right: 50px; bottom: 0; width: 300px; height: 300px; object-fit: contain; display: block; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="16" data-width="1280" data-height="720">
+      <!-- background -->
+      <div id="s-bg" class="clip" data-start="0" data-duration="16" data-track-index="0">
+        <div id="bg-wrap"><img id="bg" data-layout-allow-overflow src="assets/img/temple-bg.webp" alt="" /></div>
+        <div id="shade"></div>
+      </div>
+
+      <!-- floating petals -->
+      <div id="s-petals" class="clip" data-start="0" data-duration="16" data-track-index="1"></div>
+
+      <!-- title -->
+      <div id="s-title" class="clip" data-start="0" data-duration="9.2" data-track-index="2">
+        <div id="title-box">
+          <div id="title-card">
+            <span class="tw">ผจญภัย</span><span class="tw">แดน</span><span class="tw">ธรรมะ</span>
+          </div>
+          <span id="title-en">Dhamma Land Adventure</span>
+        </div>
+      </div>
+
+      <!-- cast -->
+      <div id="s-cast" class="clip" data-start="3" data-duration="6.4" data-track-index="3">
+        <img id="nen" src="assets/img/nen-wave.webp" alt="" />
+        <img id="tup" data-layout-allow-overflow src="assets/img/tup-crazy.webp" alt="" />
+        <div id="b-nen" class="bubble"><span class="th">สวัสดีครับ! ผมเณรต้นบุญ</span><span class="en">Hi! I'm Novice Tonboon</span></div>
+        <div id="b-tup" class="bubble"><span class="th">โฮ่ง! ผมเจ้าตูบ!</span><span class="en">Woof! I'm Tup!</span></div>
+      </div>
+
+      <!-- story cards -->
+      <div id="s-cards" class="clip" data-start="9" data-duration="4.2" data-track-index="4">
+        <div id="cards-head"><span>ฟังนิทาน · เล่นเกม · ฝึกใจ</span></div>
+        <div id="cards" class="clip-inner" style="position:absolute;inset:0;">
+          <div class="card"><img src="assets/img/story1.webp" alt="" /><span>เจ้าชายสิทธัตถะ</span></div>
+          <div class="card"><img src="assets/img/story2.webp" alt="" /><span>เทวทูต 4</span></div>
+          <div class="card"><img src="assets/img/story3.webp" alt="" /><span>ตรัสรู้</span></div>
+          <div class="card"><img src="assets/img/story4.webp" alt="" /><span>สอนครั้งแรก</span></div>
+        </div>
+      </div>
+
+      <!-- finale -->
+      <div id="s-final" class="clip" data-start="12.8" data-duration="3.2" data-track-index="5">
+        <svg id="burst" viewBox="-100 -100 200 200" aria-hidden="true"></svg>
+        <svg id="big-lotus" viewBox="0 0 200 200" aria-hidden="true"></svg>
+        <img id="jump" src="assets/img/nen-jump.webp" alt="" />
+        <div id="final-text">
+          <span id="final-th">เก็บดอกบัวให้ครบ 9 ดอก!</span>
+          <span id="final-en">Collect all 9 lotus flowers!</span>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // seeded PRNG so every render is identical
+      function mulberry32(a) { return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+      const rnd = mulberry32(98);
+      const NS = "http://www.w3.org/2000/svg";
+
+      // petals
+      const petalLayer = document.getElementById("s-petals");
+      const petals = [];
+      for (let i = 0; i < 16; i++) {
+        const s = document.createElementNS(NS, "svg");
+        s.setAttribute("viewBox", "0 0 40 40"); s.setAttribute("class", "petal");
+        s.innerHTML = '<path d="M20 4c7 8 7 20 0 32-7-12-7-24 0-32z"/>';
+        s.style.left = Math.round(rnd() * 1240) + "px"; s.style.top = "740px";
+        petalLayer.appendChild(s);
+        petals.push({ el: s, delay: rnd() * 14, dur: 6 + rnd() * 4, drift: (rnd() - .5) * 260, spin: (rnd() - .5) * 540, scale: .6 + rnd() * .9 });
+      }
+
+      // sun-burst rays
+      const burst = document.getElementById("burst");
+      for (let i = 0; i < 18; i++) {
+        const a = (i / 18) * Math.PI * 2, b = a + Math.PI / 30;
+        const p = document.createElementNS(NS, "path");
+        p.setAttribute("d", `M0 0 L${Math.cos(a) * 100} ${Math.sin(a) * 100} L${Math.cos(b) * 100} ${Math.sin(b) * 100}Z`);
+        burst.appendChild(p);
+      }
+
+      // big lotus, built from petal layers
+      const lotus = document.getElementById("big-lotus");
+      const petal = (rot, len, wid, cls) => {
+        const p = document.createElementNS(NS, "path");
+        p.setAttribute("d", `M100 150 C${100 - wid} ${150 - len * .45} ${100 - wid * .55} ${150 - len * .85} 100 ${150 - len} C${100 + wid * .55} ${150 - len * .85} ${100 + wid} ${150 - len * .45} 100 150Z`);
+        p.setAttribute("class", "lp " + cls); p.setAttribute("transform", `rotate(${rot} 100 150)`);
+        lotus.appendChild(p); return p;
+      };
+      [-80, -55, 55, 80].forEach((r) => petal(r, 92, 30, "p-back"));
+      [-32, 32].forEach((r) => petal(r, 112, 34, "p-mid"));
+      [-14, 14].forEach((r) => petal(r, 120, 30, "p-mid"));
+      petal(0, 128, 34, "p-front");
+
+      const tl = gsap.timeline({ paused: true });
+
+      // background Ken Burns
+      tl.fromTo("#bg", { scale: 1.18, x: 40 }, { scale: 1, x: 0, duration: 16, ease: "none" }, 0);
+
+      // petals float up
+      petals.forEach((p) => {
+        tl.fromTo(p.el, { y: 0, x: 0, rotation: 0, scale: p.scale, opacity: 0 },
+          { y: -820, x: p.drift, rotation: p.spin, opacity: 1, duration: p.dur, ease: "none" }, p.delay * 0.95);
+      });
+
+      // title pops in word by word
+      tl.fromTo("#title-card", { scale: 0.4, rotation: -8, opacity: 0 }, { scale: 1, rotation: 0, opacity: 1, duration: .7, ease: "back.out(2)" }, .2);
+      tl.fromTo(".tw", { y: 70, opacity: 0, scale: .5 }, { y: 0, opacity: 1, scale: 1, duration: .55, ease: "back.out(3)", stagger: .22 }, .45);
+      tl.fromTo("#title-en", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: .5, ease: "back.out(2.5)" }, 1.3);
+      tl.to(".tw", { y: -10, duration: .25, ease: "sine.inOut", yoyo: true, repeat: 1, stagger: .1 }, 2.2);
+      // title floats up and shrinks once the cast arrives
+      tl.to("#title-box", { y: -60, scale: .55, duration: .7, ease: "power2.inOut" }, 3);
+      tl.to("#title-box", { opacity: 0, y: -120, duration: .5, ease: "power2.in" }, 8.6);
+
+      // Tonboon bounces in, waves, talks
+      tl.fromTo("#nen", { x: -520, rotation: -12 }, { x: 0, rotation: 0, duration: .9, ease: "back.out(1.6)" }, 3.05);
+      tl.to("#nen", { rotation: -3, duration: .35, ease: "sine.inOut", yoyo: true, repeat: 5, transformOrigin: "50% 100%" }, 4);
+      tl.fromTo("#b-nen", { scale: 0, opacity: 0, transformOrigin: "0% 100%" }, { scale: 1, opacity: 1, duration: .45, ease: "back.out(2.5)" }, 3.8);
+      tl.to("#b-nen", { opacity: 0, scale: .8, duration: .3 }, 6.1);
+
+      // Tup spins in
+      tl.fromTo("#tup", { x: 700, rotation: 720, scale: .6 }, { x: 0, rotation: 0, scale: 1, duration: 1.1, ease: "back.out(1.3)" }, 5.6);
+      tl.to("#tup", { y: -40, duration: .18, ease: "power2.out", yoyo: true, repeat: 7 }, 6.8);
+      tl.fromTo("#b-tup", { scale: 0, opacity: 0, transformOrigin: "100% 100%" }, { scale: 1, opacity: 1, duration: .45, ease: "back.out(2.5)" }, 6.5);
+
+      // cast exits
+      tl.to("#nen", { y: 600, duration: .55, ease: "back.in(1.5)" }, 8.7);
+      tl.to("#tup", { y: 500, rotation: 90, duration: .55, ease: "back.in(1.5)" }, 8.75);
+      tl.to("#b-tup", { opacity: 0, scale: .6, duration: .3 }, 8.6);
+
+      // story cards deal in like a hand of cards
+      tl.fromTo("#cards-head", { y: -60, opacity: 0 }, { y: 0, opacity: 1, duration: .5, ease: "back.out(2)" }, 9.05);
+      tl.fromTo(".card", { y: 520, rotation: (i) => [-25, -10, 10, 25][i], opacity: 0 },
+        { y: (i) => [18, 0, 0, 18][i], rotation: (i) => [-6, -2, 2, 6][i], opacity: 1, duration: .7, ease: "back.out(1.4)", stagger: .2 }, 9.2);
+      tl.to(".card", { y: "-=16", duration: .3, ease: "sine.inOut", yoyo: true, repeat: 1, stagger: .12 }, 11);
+      tl.to(".card", { y: -620, rotation: (i) => [-30, -12, 12, 30][i], duration: .5, ease: "back.in(1.4)", stagger: .07 }, 12.45);
+      tl.to("#cards-head", { opacity: 0, y: -40, duration: .3 }, 12.5);
+
+      // finale: rays, lotus blooms, everyone celebrates
+      tl.fromTo("#burst", { scale: 0, rotation: 0 }, { scale: 1, rotation: 40, duration: 3.2, ease: "power2.out" }, 12.8);
+      tl.fromTo("#big-lotus", { scale: .2, y: 80 }, { scale: 1, y: 0, duration: .8, ease: "back.out(1.8)" }, 12.85);
+      tl.fromTo("#big-lotus .lp", { scaleY: 0, svgOrigin: "100 150" }, { scaleY: 1, duration: .55, ease: "back.out(2.2)", stagger: .06 }, 12.95);
+      tl.to("#big-lotus", { rotation: 4, duration: .6, ease: "sine.inOut", yoyo: true, repeat: 2, transformOrigin: "50% 80%" }, 14);
+      tl.fromTo("#jump", { y: 420 }, { y: 0, duration: .6, ease: "back.out(1.7)" }, 13.4);
+      tl.to("#jump", { y: -30, duration: .3, ease: "power2.out", yoyo: true, repeat: 3 }, 14.1);
+      tl.fromTo("#final-text", { y: 260 }, { y: 0, duration: .55, ease: "back.out(1.6)" }, 13.45);
+      tl.fromTo("#final-th", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: .55, ease: "back.out(2.6)" }, 13.6);
+      tl.fromTo("#final-en", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: .4, ease: "power2.out" }, 14);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

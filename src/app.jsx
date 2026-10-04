@@ -1,0 +1,765 @@
+const { useState, useEffect, useRef, useMemo, createContext, useContext } = React;
+
+const T = (th, en) => ({ th, en });
+const LangCtx = createContext("th");
+const useT = () => { const l = useContext(LangCtx); return (x) => (typeof x === "string" ? x : x[l]); };
+
+const IMG = {
+  wave: "img/nen-wave.webp", meditate: "img/nen-meditate.webp", think: "img/nen-think.webp",
+  jump: "img/nen-jump.webp", tupCrazy: "img/tup-crazy.webp", tupCalm: "img/tup-calm.webp",
+  bg: "img/temple-bg.webp", s1: "img/story1.webp", s2: "img/story2.webp", s3: "img/story3.webp", s4: "img/story4.webp",
+};
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("dhamma-" + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("dhamma-" + k, JSON.stringify(v)); } catch (e) {} },
+};
+
+/* ---------- sound ---------- */
+let ac = null;
+const audio = () => { try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === "suspended") ac.resume(); } catch (e) {} return ac; };
+let muted = false;
+function tone(freq, dur, type = "sine", vol = 0.2, slide = 0) {
+  const a = audio(); if (!a || muted) return;
+  const o = a.createOscillator(), g = a.createGain(), t = a.currentTime;
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur);
+}
+const sfx = {
+  ding() { tone(880, 0.25, "triangle"); setTimeout(() => tone(1320, 0.4, "triangle"), 110); },
+  boing() { tone(300, 0.35, "square", 0.08, -180); },
+  pop() { tone(600, 0.1, "sine", 0.15, 400); },
+  bark() { tone(520, 0.09, "sawtooth", 0.12, -260); setTimeout(() => tone(560, 0.11, "sawtooth", 0.12, -300), 150); },
+  fanfare() { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.35, "triangle", 0.18), i * 140)); },
+  // plucked string (Karplus-Strong)
+  pluck(freq, decay = 0.996, vol = 0.5) {
+    const a = audio(); if (!a || muted) return;
+    const sr = a.sampleRate, len = Math.floor(sr * 2.2), buf = a.createBuffer(1, len, sr), d = buf.getChannelData(0);
+    const n = Math.max(2, Math.floor(sr / freq)); const ring = new Float32Array(n).map(() => Math.random() * 2 - 1);
+    for (let i = 0, p = 0; i < len; i++) { const nx = (p + 1) % n; const v = ring[p]; d[i] = v * vol; ring[p] = (v + ring[nx]) * 0.5 * decay; p = nx; }
+    const s = a.createBufferSource(); s.buffer = buf; s.connect(a.destination); s.start();
+  },
+};
+
+function speak(text, lang) {
+  try {
+    const ss = window.speechSynthesis; if (!ss || muted) return; ss.cancel();
+    const u = new SpeechSynthesisUtterance(text.replace(/[“”"']/g, ""));
+    u.lang = lang === "th" ? "th-TH" : "en-US"; u.rate = lang === "th" ? 0.95 : 1; u.pitch = 1.25;
+    const v = ss.getVoices().find((v) => v.lang && v.lang.toLowerCase().startsWith(lang)); if (v) u.voice = v;
+    ss.speak(u);
+  } catch (e) {}
+}
+
+const reduced = () => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } };
+
+/* ---------- small pieces ---------- */
+function Lotus({ on = true, size = 26 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden="true" className={on ? "lotus on" : "lotus"}>
+      <path d="M20 6c4 5 5 11 0 19-5-8-4-14 0-19z" />
+      <path d="M8 13c6 1 10 6 12 12-7 0-12-5-12-12z" />
+      <path d="M32 13c-6 1-10 6-12 12 7 0 12-5 12-12z" />
+      <path d="M4 24c5-1 11 1 16 4-6 3-13 2-16-4z" />
+      <path d="M36 24c-5-1-11 1-16 4 6 3 13 2 16-4z" />
+    </svg>
+  );
+}
+
+function Typed({ text }) {
+  const [n, setN] = useState(reduced() ? text.length : 0);
+  useEffect(() => {
+    if (reduced()) { setN(text.length); return; }
+    setN(0); let i = 0;
+    const id = setInterval(() => { i += 2; setN(i); if (i >= text.length) clearInterval(id); }, 22);
+    return () => clearInterval(id);
+  }, [text]);
+  return <span>{text.slice(0, n)}<span className="ghost">{text.slice(n)}</span></span>;
+}
+
+/* Narrator: a novice monk with a speech bubble. lines = [{th,en,who?}] */
+function Narrator({ pose = "wave", lines, onFinish, compact }) {
+  const t = useT(); const lang = useContext(LangCtx);
+  const [i, setI] = useState(0);
+  const key = lines.map((l) => l.th).join("|");
+  useEffect(() => { setI(0); }, [key]);
+  const line = lines[Math.min(i, lines.length - 1)];
+  const last = i >= lines.length - 1;
+  const isTup = line.who === "tup";
+  useEffect(() => { if (isTup) sfx.bark(); if (last && onFinish) onFinish(); }, [i, key]);
+  return (
+    <div className={"narrator" + (compact ? " compact" : "")}>
+      <img className={"nar-img pose-" + pose} src={IMG[pose]} alt={t(T("เณรต้นบุญกับเจ้าตูบ", "Novice Tonboon and Tup the puppy"))} />
+      <div className={"bubble" + (isTup ? " tup" : "")} aria-live="polite">
+        <div className="who">{isTup ? t(T("เจ้าตูบ", "Tup")) : t(T("เณรต้นบุญ", "Novice Tonboon"))}</div>
+        <p className="say"><Typed text={t(line)} /></p>
+        <div className="bubble-row">
+          <button className="icon-btn" onClick={() => speak(t(line), lang)} aria-label={t(T("ฟังเสียง", "Listen"))} title={t(T("ฟังเสียง", "Listen"))}>
+            <svg viewBox="0 0 24 24" width="20" height="20"><path d="M4 9v6h4l5 4V5L8 9H4z" /><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" strokeWidth="2" /></svg>
+          </button>
+          <span className="dots">{lines.length > 1 && lines.map((_, k) => <i key={k} className={k === i ? "cur" : ""} />)}</span>
+          {lines.length > 1 && (i > 0) && <button className="btn ghost-btn" onClick={() => setI(i - 1)}>{t(T("◀ ย้อน", "◀ Back"))}</button>}
+          {!last && <button className="btn" onClick={() => { sfx.pop(); setI(i + 1); }}>{t(T("ต่อไป ▶", "Next ▶"))}</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Done({ onNext, isLast }) {
+  const t = useT();
+  return (
+    <div className="done-banner" role="status">
+      <Lotus size={44} />
+      <div>
+        <strong>{t(T("ได้ดอกบัวแล้ว!", "You earned a lotus!"))}</strong>
+        <span>{t(T("เก่งมาก ไปด่านต่อไปกันเลย", "Great job. On to the next stop!"))}</span>
+      </div>
+      <button className="btn big" onClick={onNext}>{isLast ? t(T("กลับแผนที่", "Back to map")) : t(T("ด่านต่อไป ▶", "Next stop ▶"))}</button>
+    </div>
+  );
+}
+
+/* ---------- 1. Meet ---------- */
+function Meet({ complete }) {
+  const lines = [
+    T("สวัสดีครับ! ผมชื่อ “เณรต้นบุญ” อายุ 10 ขวบ เท่ากับเพื่อน ๆ เลย", "Hi there! I'm Novice Tonboon. I'm 10 years old, just like you!"),
+    T("ส่วนเจ้าก้อนขนตรงนี้ชื่อ “เจ้าตูบ” ชอบไก่ทอด ชอบไล่งับหางตัวเอง และชอบคาบรองเท้าแตะของหลวงพี่ไปซ่อน", "This fluffball is Tup. He loves fried chicken, chasing his own tail, and hiding the monks' sandals."),
+    { ...T("โฮ่ง! ผมไม่ได้ซ่อนนะ ผมแค่… ยืมไปเคี้ยว", "Woof! I didn't hide them. I just… borrowed them for chewing."), who: "tup" },
+    T("วันนี้เราจะพาไปผจญภัยในแดนธรรมะ เรียนรู้คำสอนของพระพุทธเจ้าแบบสนุก ๆ", "Today we're going on an adventure to learn what the Buddha taught, the fun way."),
+    T("ผ่านแต่ละด่าน จะได้ดอกบัว 1 ดอก เก็บให้ครบทุกด่าน แล้วรับใบประกาศไปอวดคุณพ่อคุณแม่ได้เลย!", "Each stop gives you a lotus flower. Collect them all and get a certificate to show your family!"),
+    T("พร้อมไหม? เจ้าตูบ… ปล่อยชายจีวรพี่ก่อน! ไปกันเลย!", "Ready? Tup… let go of my robe! Let's go!"),
+  ];
+  return <div className="solo"><Narrator pose="wave" lines={lines} onFinish={complete} /></div>;
+}
+
+/* ---------- 2. Story ---------- */
+function Story({ complete }) {
+  const t = useT(); const lang = useContext(LangCtx);
+  const slides = [
+    { img: IMG.s1, title: T("เจ้าชายในวังแสนสบาย", "A prince in a comfy palace"),
+      text: T("นานมาแล้วกว่า 2,600 ปี ที่ประเทศอินเดีย มีเจ้าชายชื่อ “สิทธัตถะ” อยู่ในวังที่มีทุกอย่าง ทั้งดนตรี ขนม สวนดอกไม้ แต่เจ้าชายกลับสงสัยว่า “ชีวิตมีแค่นี้เหรอ?”",
+        "Over 2,600 years ago in India lived Prince Siddhartha. His palace had everything: music, snacks, flower gardens. Yet he wondered, “Is this all life is?”"),
+      tup: T("ถ้าเป็นผม มีไก่ทอดทุกวันก็พอใจแล้วครับ", "If it were me, fried chicken every day would be plenty.") },
+    { img: IMG.s2, title: T("เทวทูตทั้ง 4", "The four sights"),
+      text: T("วันหนึ่งเจ้าชายออกนอกวัง ได้เห็นคนแก่ คนเจ็บ คนตาย และนักบวชที่ใจสงบ เจ้าชายคิดว่า “ทุกคนต้องแก่ เจ็บ ตาย ต้องมีทางที่ทำให้ใจไม่ทุกข์สิ!”",
+        "One day the prince left the palace and saw an old man, a sick man, a funeral, and a calm monk. He thought, “Everyone gets old, sick, and dies. There must be a way to free the heart from suffering!”"),
+      tup: T("เหมือนตอนผมเห็นชามข้าวว่าง… ใจหายเลยครับ", "Like when I see my food bowl empty… heartbreaking.") },
+    { img: IMG.s3, title: T("ตรัสรู้ใต้ต้นโพธิ์", "Awakening under the Bodhi tree"),
+      text: T("เจ้าชายออกบวชและฝึกฝนอยู่ 6 ปี จนคืนวันเพ็ญเดือน 6 ใต้ต้นโพธิ์ ท่านก็ “ตรัสรู้” คือเข้าใจความจริงของชีวิต และเป็น “พระพุทธเจ้า” ซึ่งแปลว่า ผู้รู้ ผู้ตื่น ผู้เบิกบาน",
+        "He became a monk and practised for 6 years. On the full moon of the 6th lunar month, under the Bodhi tree, he awakened and understood the truth of life. He became the Buddha: the one who knows, the awake, the joyful."),
+      tup: T("ผู้ตื่น… ผมก็ตื่นนะ ตื่นตอนได้ยินเสียงถุงขนม", "Awake… I wake up too. Whenever I hear a snack bag.") },
+    { img: IMG.s4, title: T("สอนครั้งแรกที่ป่ากวาง", "First teaching in the Deer Park"),
+      text: T("พระพุทธเจ้าไปสอนนักบวช 5 รูป (ปัญจวัคคีย์) ที่ป่ากวาง เป็นการสอนครั้งแรก ตรงกับ “วันอาสาฬหบูชา” จากนั้นท่านก็เดินทางสอนผู้คนอีก 45 ปี",
+        "The Buddha taught five monks in the Deer Park. It was his very first teaching, which Thais remember on Asanha Bucha Day. He went on teaching people for 45 more years."),
+      tup: T("45 ปี! ผมนั่งฟังได้ 45 วินาทีก็เก่งแล้ว", "45 years! I can only sit still for 45 seconds.") },
+  ];
+  const [i, setI] = useState(0);
+  const [ans, setAns] = useState(null);
+  const s = slides[i];
+  const opts = [
+    { l: T("วันวิสาขบูชา", "Visakha Bucha Day"), ok: true },
+    { l: T("วันสงกรานต์", "Songkran (water festival)") },
+    { l: T("วันเกิดเจ้าตูบ", "Tup's birthday") },
+  ];
+  return (
+    <div className="story">
+      <figure className="story-card">
+        <img src={s.img} alt={t(s.title)} />
+        <figcaption>
+          <span className="pill">{t(T("ตอนที่", "Part"))} {i + 1}/4</span>
+          <h3>{t(s.title)}</h3>
+          <p>{t(s.text)}</p>
+          <p className="tup-line"><b>{t(T("เจ้าตูบ:", "Tup:"))}</b> {t(s.tup)}</p>
+          <div className="row">
+            <button className="btn ghost-btn" disabled={i === 0} onClick={() => setI(i - 1)}>{t(T("◀ ก่อนหน้า", "◀ Previous"))}</button>
+            <button className="btn ghost-btn" onClick={() => speak(t(s.text), lang)}>{t(T("ฟังเสียง", "Listen"))}</button>
+            {i < 3 && <button className="btn" onClick={() => { sfx.pop(); setI(i + 1); }}>{t(T("ถัดไป ▶", "Next ▶"))}</button>}
+          </div>
+        </figcaption>
+      </figure>
+      {i === 3 && (
+        <div className="quiz-box">
+          <h3>{t(T("คำถามชิงดอกบัว: วันที่พระพุทธเจ้าตรัสรู้ ตรงกับวันอะไร?", "Lotus question: on which Thai holy day do we remember the Buddha's awakening?"))}</h3>
+          <div className="choices">
+            {opts.map((o, k) => (
+              <button key={k} className={"choice" + (ans === k ? (o.ok ? " right" : " wrong") : "")}
+                onClick={() => { setAns(k); if (o.ok) { sfx.ding(); complete(); } else sfx.boing(); }}>{t(o.l)}</button>
+            ))}
+          </div>
+          {ans != null && <p className="feedback">{opts[ans].ok
+            ? t(T("ถูกต้อง! วันวิสาขบูชา คือวันประสูติ ตรัสรู้ และปรินิพพาน ตรงกันทั้ง 3 เหตุการณ์ในวันเพ็ญเดือน 6", "Correct! Visakha Bucha marks the Buddha's birth, awakening and passing, all on the full moon of the 6th month."))
+            : ans === 2 ? t(T("โฮ่ง! วันเกิดผมไม่ใช่ แต่ขอบคุณที่คิดถึงนะ ลองใหม่!", "Woof! Not my birthday, but thanks for thinking of me. Try again!"))
+            : t(T("สงกรานต์คือวันปีใหม่ไทย สาดน้ำสนุก แต่ยังไม่ใช่ ลองใหม่นะ", "Songkran is Thai New Year, with water fights. Not this one, try again!"))}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- 3. Three Jewels ---------- */
+function Jewels({ complete }) {
+  const t = useT();
+  const gems = [
+    { name: T("พระพุทธ", "The Buddha"), color: "gold", tag: T("ครูผู้ค้นพบทาง", "The teacher who found the way"),
+      text: T("เหมือนโค้ชที่เคยเดินทางนี้มาก่อน แล้วกลับมาบอกเราว่า “ทางนี้ไปได้ ไม่หลงแน่นอน”", "Like a coach who walked the path first and came back to tell us: “This way works. You won't get lost.”") },
+    { name: T("พระธรรม", "The Dhamma"), color: "blue", tag: T("คำสอนของพระพุทธเจ้า", "The Buddha's teachings"),
+      text: T("เหมือนแผนที่ หรือสูตรทำขนม บอกว่าต้องทำอะไร ทีละขั้น ใจถึงจะเป็นสุข", "Like a map, or a recipe: what to do, step by step, so the heart can be happy.") },
+    { name: T("พระสงฆ์", "The Sangha"), color: "saffron", tag: T("ผู้ปฏิบัติและสืบทอดคำสอน", "Those who practise and pass it on"),
+      text: T("เหมือนพี่ ๆ ในทีม ที่ฝึกตามแผนที่และช่วยสอนรุ่นน้อง อย่างหลวงพี่ที่วัดไงล่ะ", "Like older teammates who follow the map and help the younger ones, such as the monks at your local temple.") },
+  ];
+  const [open, setOpen] = useState([false, false, false]);
+  const all = open.every(Boolean);
+  useEffect(() => { if (all) { sfx.fanfare(); complete(); } }, [all]);
+  return (
+    <div className="split">
+      <Narrator pose="think" compact lines={[
+        T("พระรัตนตรัย แปลว่า “แก้ว 3 ดวง” เป็นสิ่งที่มีค่าที่สุดของชาวพุทธ", "The Triple Gem means “three precious jewels”. They're the most valuable things for Buddhists."),
+        T("ลองแตะแก้วแต่ละดวงให้ส่องแสงดูสิ ครบ 3 ดวงได้ดอกบัว!", "Tap each jewel to make it shine. Light up all 3 to earn a lotus!"),
+        { ...T("ผมก็มีแก้ว 3 ดวงนะ: ไก่ทอด ลูกบอล และพี่เณร… เรียงตามนั้นเลย", "I have 3 jewels too: fried chicken, my ball, and Tonboon… in that order."), who: "tup" },
+      ]} />
+      <div className="gems">
+        {gems.map((g, k) => (
+          <button key={k} className={"gem-card gem-" + g.color + (open[k] ? " lit" : "")}
+            onClick={() => { sfx.ding(); setOpen((o) => o.map((v, j) => (j === k ? true : v))); }} aria-expanded={open[k]}>
+            <svg className="gem" viewBox="0 0 60 60" aria-hidden="true"><path d="M14 8h32l12 16-28 30L2 24z" /><path d="M2 24h56M14 8l8 16 8-16 8 16 8-16M22 24l8 30 8-30" fill="none" /></svg>
+            <span className="gem-name">{t(g.name)}</span>
+            <span className="gem-tag">{open[k] ? t(g.tag) : t(T("แตะเพื่อดู", "Tap to reveal"))}</span>
+            {open[k] && <span className="gem-text">{t(g.text)}</span>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- 4. Five Precepts ---------- */
+const PRECEPTS = [
+  T("ไม่ทำร้ายหรือฆ่าสัตว์", "Don't hurt or kill living beings"),
+  T("ไม่ลักขโมย ไม่เอาของที่เขาไม่ได้ให้", "Don't steal or take what isn't given"),
+  T("เคารพร่างกายของตัวเองและผู้อื่น", "Respect your own body and other people's"),
+  T("ไม่พูดโกหก", "Don't lie"),
+  T("ไม่ดื่มเหล้า ไม่ใช้สิ่งเสพติด", "No alcohol or drugs that cloud the mind"),
+];
+function Precepts({ complete }) {
+  const t = useT();
+  const cards = [
+    { s: T("แอบหยิบยางลบรูปแมวของน้องมาใช้ แล้วไม่คืน", "Secretly take your sister's cat-shaped eraser and never give it back"), good: false, p: 1,
+      f: T("ผิดศีลข้อ 2 แม้ยางลบจะน่ารักแค่ไหน ก็ต้องขอก่อนนะ", "Breaks precept 2. No matter how cute the eraser is, ask first!") },
+    { s: T("เห็นมดตกลงในแก้วน้ำ เลยเอาใบไม้ช่วยตักขึ้นมา", "See an ant drowning in a glass and scoop it out with a leaf"), good: true, p: 0,
+      f: T("ดีมาก! นี่คือความเมตตา ตรงข้ามกับการทำร้ายสัตว์ (ข้อ 1)", "Lovely! That's kindness, the opposite of harming (precept 1).") },
+    { s: T("เอาไม้ไปเขี่ยรังมดเล่น ให้มันวิ่งวุ่น", "Poke an anthill with a stick to watch the ants panic"), good: false, p: 0,
+      f: T("ผิดศีลข้อ 1 มดก็กลัวเจ็บเหมือนเรานะ", "Breaks precept 1. Ants don't want to get hurt either.") },
+    { s: T("ทำแจกันของแม่แตก แล้วบอกว่าเจ้าตูบทำ", "Break Mum's vase and say Tup did it"), good: false, p: 3,
+      f: T("ผิดศีลข้อ 4! เจ้าตูบประท้วง: “โฮ่ง! ใส่ร้ายหมาไม่ได้นะ!”", "Breaks precept 4! Tup protests: “Woof! Don't blame the dog!”") },
+    { s: T("เก็บกระเป๋าสตางค์ได้ที่โรงเรียน แล้วเอาไปคืนครู", "Find a wallet at school and hand it to the teacher"), good: true, p: 1,
+      f: T("เยี่ยม! ซื่อสัตย์ ไม่เอาของที่ไม่ใช่ของเรา (ข้อ 2)", "Great! Honest, and didn't take what isn't yours (precept 2).") },
+    { s: T("พี่ข้างบ้านยื่นบุหรี่ไฟฟ้าให้ลอง เราบอกว่า “ไม่เอา ขอบคุณ”", "An older kid offers you a vape and you say “No thanks”"), good: true, p: 4,
+      f: T("ถูกต้อง! ใจกับร่างกายเราสำคัญ ไม่ลองสิ่งเสพติด (ข้อ 5)", "Right! Your mind and body matter. Say no to things that cloud them (precept 5).") },
+    { s: T("เพื่อนบอกว่าไม่อยากให้กอด เราก็หยุดและเคารพเขา", "A friend says they don't want a hug, so you stop and respect that"), good: true, p: 2,
+      f: T("ดีมาก! ร่างกายของใครก็เป็นของคนนั้น (ข้อ 3)", "Well done! Everyone's body belongs to them (precept 3).") },
+    { s: T("บอกเพื่อนตรง ๆ ว่าเราเผลอกินขนมของเขาไป แล้วขอโทษ", "Tell your friend you ate their snack by mistake, and say sorry"), good: true, p: 3,
+      f: T("เก่งมาก! พูดความจริงแม้จะยาก (ข้อ 4)", "Brave! Telling the truth even when it's hard (precept 4).") },
+  ];
+  const [i, setI] = useState(0);
+  const [res, setRes] = useState(null);
+  const [score, setScore] = useState(0);
+  const finished = i >= cards.length;
+  useEffect(() => { if (finished) { sfx.fanfare(); complete(); } }, [finished]);
+  const c = cards[i];
+  const pick = (g) => {
+    if (res) return; const ok = g === c.good; setRes({ ok }); if (ok) { setScore(score + 1); sfx.ding(); } else sfx.boing();
+  };
+  return (
+    <div className="split">
+      <div className="stack">
+        <Narrator pose="wave" compact lines={[
+          T("ศีล 5 คือ 5 ข้อตกลงกับตัวเอง ที่ช่วยให้เราและคนรอบตัวอยู่อย่างปลอดภัยและมีความสุข", "The Five Precepts are 5 promises to yourself that keep you and everyone around you safe and happy."),
+          T("มาเล่นเกมกัน! อ่านสถานการณ์ แล้วตัดสินว่า “ทำดี” หรือ “ผิดศีล”", "Let's play! Read each situation and decide: good deed, or breaks a precept?"),
+        ]} />
+        <ol className="precepts">{PRECEPTS.map((p, k) => <li key={k} className={c && res && c.p === k ? "hl" : ""}><b>{k + 1}</b>{t(p)}</li>)}</ol>
+      </div>
+      <div className="game">
+        <div className="game-head"><span className="pill">{t(T("การ์ด", "Card"))} {Math.min(i + 1, cards.length)}/{cards.length}</span><span className="pill score">{t(T("ตอบถูก", "Correct"))} {score}</span></div>
+        {!finished ? (
+          <div className={"scenario" + (res ? (res.ok ? " right" : " wrong") : "")}>
+            <p className="scn">{t(c.s)}</p>
+            {!res ? (
+              <div className="row center">
+                <button className="btn good big" onClick={() => pick(true)}>{t(T("ทำดี", "Good deed"))}</button>
+                <button className="btn bad big" onClick={() => pick(false)}>{t(T("ผิดศีล", "Breaks a precept"))}</button>
+              </div>
+            ) : (
+              <>
+                <p className="feedback"><b>{res.ok ? t(T("ถูกต้อง! ", "Correct! ")) : t(T("อุ๊ย ยังไม่ใช่ ", "Oops, not quite. "))}</b>{t(c.f)}</p>
+                <button className="btn big" onClick={() => { setRes(null); setI(i + 1); }}>{t(T("การ์ดต่อไป ▶", "Next card ▶"))}</button>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="scenario right"><p className="scn">{t(T(`ครบแล้ว! ตอบถูก ${score} จาก ${cards.length} ข้อ`, `All done! ${score} out of ${cards.length} correct`))}</p>
+            <p className="feedback">{t(T("ศีลไม่ใช่กฎที่ใครบังคับ แต่เป็นเกราะที่เราเลือกใส่เอง เพื่อให้ใจสบาย ไม่ต้องกลัวใครจับได้", "Precepts aren't rules someone forces on you. They're armour you choose to wear, so your heart feels light and you never have to worry about getting caught."))}</p></div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- 5. Middle Way ---------- */
+function MiddleWay({ complete }) {
+  const t = useT();
+  const [ten, setTen] = useState(15);
+  const [broken, setBroken] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [found, setFound] = useState(false);
+  const zone = ten < 38 ? "loose" : ten > 68 ? "tight" : "just";
+  const sag = Math.max(0, (60 - ten) * 0.9);
+  const pluck = () => {
+    if (broken) return;
+    if (zone === "loose") { sfx.pluck(70, 0.9, 0.6); setMsg(T("ปึ้ง… เสียงยานคาง เหมือนเจ้าตูบหาว", "Thwump… a saggy sound, like Tup yawning.")); }
+    else if (zone === "tight") {
+      if (ten > 85) { sfx.pluck(1400, 0.95, 0.5); setTimeout(() => tone(200, 0.3, "sawtooth", 0.2, -150), 60); setBroken(true); setMsg(T("เป๊าะ! สายขาดเลย ตึงเกินไป", "SNAP! The string broke. Too tight!")); }
+      else { sfx.pluck(900, 0.985, 0.45); setMsg(T("แป๊น! เสียงแหลมเสียดหู ระวังจะขาดนะ", "Pyiing! Shrill and scary. It might snap!")); }
+    } else { sfx.pluck(330, 0.997, 0.5); setMsg(T("ติ๊ง~ เพราะมาก! นี่แหละ “พอดี”", "Ting~ Beautiful! That's “just right”.")); if (!found) { setFound(true); complete(); } }
+  };
+  return (
+    <div className="split">
+      <Narrator pose="think" compact lines={[
+        T("ก่อนตรัสรู้ เจ้าชายเคยลองอดอาหารจนผอมมาก แต่ก็ไม่เจอคำตอบ", "Before awakening, the prince tried starving himself until he was very thin, but found no answer."),
+        T("คนไทยเล่าว่า ตอนนั้นพระอินทร์มาดีดพิณ 3 สาย: สายหย่อนเกินไปเสียงไม่เพราะ สายตึงเกินไปก็ขาด สายที่ขึงพอดีเสียงไพเราะที่สุด", "Thais tell how the god Indra played a 3-string lute: too loose sounded dull, too tight snapped, and the one tuned just right sang beautifully."),
+        T("ท่านจึงเข้าใจ “ทางสายกลาง” คือไม่สบายเกินไป และไม่ทรมานตัวเองเกินไป ลองหมุนลูกบิดหาเสียงที่พอดีดูสิ!", "So he understood the Middle Way: not too comfy, not too harsh. Try tuning the string to find the sweet spot!"),
+      ]} />
+      <div className="lute-box">
+        <svg className="lute" viewBox="0 0 400 140" role="img" aria-label="string">
+          <rect x="6" y="40" width="22" height="60" rx="6" className="peg" />
+          <rect x="372" y="40" width="22" height="60" rx="6" className="peg" />
+          {!broken ? <path d={`M28 70 Q200 ${70 + sag * 1.4} 372 70`} className={"str " + zone} />
+            : <><path d="M28 70 Q110 95 170 120" className="str tight" /><path d="M372 70 Q300 100 250 125" className="str tight" /></>}
+        </svg>
+        <label className="knob" htmlFor="tension">{t(T("ความตึงของสาย", "String tension"))}
+          <input id="tension" type="range" min="0" max="100" value={ten} disabled={broken} onChange={(e) => setTen(+e.target.value)} />
+          <span className="scale"><span>{t(T("หย่อน", "loose"))}</span><span>{t(T("พอดี", "just right"))}</span><span>{t(T("ตึง", "tight"))}</span></span>
+        </label>
+        <div className="row center">
+          {!broken ? <button className="btn big" onClick={pluck}>{t(T("ดีดสาย!", "Pluck!"))}</button>
+            : <button className="btn big" onClick={() => { setBroken(false); setTen(50); setMsg(T("เปลี่ยนสายใหม่ให้แล้ว คราวนี้ลองขึงพอดี ๆ นะ", "New string fitted. Try just right this time!")); }}>{t(T("ใส่สายใหม่", "New string"))}</button>}
+        </div>
+        {msg && <p className={"feedback " + zone}>{t(msg)}</p>}
+        {found && (
+          <div className="balance">
+            <h4>{t(T("ทางสายกลางในชีวิตเรา", "The Middle Way in everyday life"))}</h4>
+            <ul>
+              <li><b>{t(T("ขนม", "Snacks"))}</b>{t(T("ไม่กินเลยก็หิว กินหมดถุงก็ปวดท้อง กินพอดีอร่อยสุด", "None and you're hungry, the whole bag and your tummy hurts. Just enough tastes best."))}</li>
+              <li><b>{t(T("เกม", "Games"))}</b>{t(T("เล่นทั้งคืนก็ง่วง ห้ามเล่นเลยก็เครียด เล่นพอดีแล้วไปทำการบ้าน", "All night and you're a zombie, never and you're grumpy. Play a bit, then homework."))}</li>
+              <li><b>{t(T("อ่านหนังสือ", "Studying"))}</b>{t(T("ไม่อ่านเลยก็สอบตก อ่านจนไม่นอนก็สมองเบลอ", "No study and you fail, no sleep and your brain turns to mush."))}</li>
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- 6. Puppy mind (mindfulness) ---------- */
+const DISTRACT = [T("ไก่ทอด!", "Fried chicken!"), T("การ์ตูนตอนใหม่!", "New cartoon!"), T("การบ้านเลข!", "Maths homework!"), T("แมวข้างบ้าน!", "The neighbour's cat!"), T("ไอติม!", "Ice cream!"), T("เกมมือถือ!", "Phone game!"), T("เพื่อนเรียก!", "A friend calling!"), T("ยุงกัด!", "Mosquito bite!")];
+function Mind({ complete }) {
+  const t = useT();
+  const GOAL = 5;
+  const [run, setRun] = useState(false);
+  const [phase, setPhase] = useState("in");
+  const [breaths, setBreaths] = useState(0);
+  const [bubbles, setBubbles] = useState([]);
+  const [letGo, setLetGo] = useState(0);
+  const calm = Math.min(1, (breaths + letGo * 0.25) / GOAL);
+  const done = breaths >= GOAL;
+  useEffect(() => {
+    if (!run || done) return;
+    const id = setInterval(() => setPhase((p) => { if (p === "out") setBreaths((b) => b + 1); return p === "in" ? "out" : "in"; }), 4000);
+    return () => clearInterval(id);
+  }, [run, done]);
+  useEffect(() => {
+    if (!run || done) return;
+    const id = setInterval(() => setBubbles((bs) => bs.length > 2 ? bs : [...bs, { id: Math.random(), w: DISTRACT[Math.floor(Math.random() * DISTRACT.length)], x: 5 + Math.random() * 65, y: 8 + Math.random() * 60 }]), 2600);
+    return () => clearInterval(id);
+  }, [run, done]);
+  useEffect(() => { if (done) { setRun(false); setBubbles([]); sfx.fanfare(); complete(); } }, [done]);
+  useEffect(() => { if (run) phase === "in" ? tone(392, 0.6, "sine", 0.06) : tone(294, 0.6, "sine", 0.06); }, [phase, run]);
+  return (
+    <div className="split">
+      <Narrator pose="meditate" compact lines={[
+        T("รู้ไหม ใจของเราเหมือนลูกหมา ชอบวิ่งไปโน่นมานี่ ได้กลิ่นอะไรก็วิ่งตาม", "Did you know your mind is like a puppy? It runs here and there, chasing every smell."),
+        T("เราไม่ต้องดุมัน แค่ค่อย ๆ พากลับมาบ้าน ทุกครั้งที่มันวิ่งไป การรู้ตัวแบบนี้เรียกว่า “สติ”", "No need to scold it. Just gently bring it home each time it runs off. Noticing like this is called mindfulness (sati)."),
+        T("กดเริ่ม แล้วหายใจตามวงกลม หายใจเข้าว่า “พุท” หายใจออกว่า “โธ” ถ้ามีความคิดลอยมา แตะมันเบา ๆ ให้ลอยไป", "Press start and breathe with the circle: in, “Bud”, out, “dho”. If a thought floats by, tap it gently and let it drift away."),
+        { ...T("ผมไม่ได้ฟุ้งซ่านนะ! ผมแค่… เอ๊ะ นั่นกลิ่นไก่ทอดหรือเปล่า?!", "I'm not distracted! I'm just… wait, is that fried chicken?!"), who: "tup" },
+      ]} />
+      <div className="mind">
+        <div className="mind-stage">
+          <img className="tup crazy" src={IMG.tupCrazy} alt="" style={{ opacity: 1 - calm }} />
+          <img className="tup calm" src={IMG.tupCalm} alt={t(T("เจ้าตูบ", "Tup"))} style={{ opacity: calm }} />
+          {bubbles.map((b) => (
+            <button key={b.id} className="thought" style={{ left: b.x + "%", top: b.y + "%" }}
+              onClick={() => { sfx.pop(); setLetGo(letGo + 1); setBubbles(bubbles.filter((x) => x.id !== b.id)); }}>{t(b.w)}</button>
+          ))}
+        </div>
+        <div className={"breath " + (run ? phase : "idle")} aria-live="polite">
+          <span>{done ? t(T("สงบแล้ว", "Calm")) : run ? (phase === "in" ? t(T("หายใจเข้า… พุท", "Breathe in… Bud")) : t(T("หายใจออก… โธ", "Breathe out… dho"))) : t(T("พร้อม", "Ready"))}</span>
+        </div>
+        <div className="meter" aria-label="calm"><i style={{ width: calm * 100 + "%" }} /></div>
+        <p className="center-text">{t(T(`หายใจครบ ${Math.min(breaths, GOAL)}/${GOAL} รอบ · ปล่อยความคิด ${letGo} ครั้ง`, `Breaths ${Math.min(breaths, GOAL)}/${GOAL} · thoughts let go ${letGo}`))}</p>
+        <div className="row center">
+          {!done ? <button className="btn big" onClick={() => { audio(); setRun(!run); }}>{run ? t(T("พักก่อน", "Pause")) : t(T("เริ่มหายใจ", "Start breathing"))}</button>
+            : <p className="feedback just">{t(T("เจ้าตูบนั่งนิ่งแล้ว! ฝึกแบบนี้ก่อนนอนหรือก่อนสอบ วันละนิดก็ได้ผล", "Tup is sitting still! Try this before bed or a test. A little each day helps."))}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- 7. Four Noble Truths ---------- */
+function Truths({ complete }) {
+  const t = useT();
+  const truths = [
+    { n: T("ทุกข์", "Dukkha"), q: T("ป่วยเป็นอะไร?", "What's wrong?"), m: T("ความทุกข์ ความไม่สบายกายไม่สบายใจ", "Suffering: when body or heart doesn't feel okay"),
+      tup: T("เจ้าตูบปวดท้องร้องโอ๊ย", "Tup has a terrible tummy ache"), life: T("เสียใจ ผิดหวัง โกรธ เหงา", "Feeling sad, let down, angry, lonely") },
+    { n: T("สมุทัย", "Samudaya"), q: T("เพราะอะไร?", "What caused it?"), m: T("เหตุของทุกข์ คือความอยากไม่รู้จักพอ (ตัณหา)", "The cause: wanting without ever feeling it's enough (craving)"),
+      tup: T("อยากกินไก่ทอดไม่หยุด 12 ชิ้น!", "Couldn't stop wanting fried chicken: 12 pieces!"), life: T("อยากได้ อยากเป็น อยากให้ทุกอย่างเป็นอย่างใจ", "Wanting things, wanting everything our way") },
+    { n: T("นิโรธ", "Nirodha"), q: T("หายได้ไหม?", "Can it be cured?"), m: T("ทุกข์ดับได้ เมื่อดับที่สาเหตุ", "Yes! Suffering ends when its cause ends"),
+      tup: T("หายปวดได้แน่นอน ถ้าเลิกกินเกิน", "The ache goes away once he stops overeating"), life: T("ใจกลับมาเบาสบาย", "The heart feels light again") },
+    { n: T("มรรค", "Magga"), q: T("ยาคืออะไร?", "What's the medicine?"), m: T("ทางดับทุกข์ มรรคมีองค์ 8 สรุปง่าย ๆ คือ ศีล สมาธิ ปัญญา", "The path: the Noble Eightfold Path, in short: good conduct, a calm mind, wisdom"),
+      tup: T("กินพอดี ฟังคุณหมอ วิ่งเล่นบ้าง", "Eat just enough, listen to the vet, go play"), life: T("ทำดี ฝึกใจให้สงบ คิดให้เข้าใจ", "Do good, calm the mind, understand clearly") },
+  ];
+  const order = useMemo(() => [2, 0, 3, 1], []);
+  const [picked, setPicked] = useState([]);
+  const [wrong, setWrong] = useState(null);
+  const done = picked.length === 4;
+  useEffect(() => { if (done) { sfx.fanfare(); complete(); } }, [done]);
+  const tap = (k) => {
+    if (picked.includes(k)) return;
+    if (k === picked.length) { sfx.ding(); setPicked([...picked, k]); setWrong(null); } else { sfx.boing(); setWrong(k); }
+  };
+  return (
+    <div className="split">
+      <Narrator pose="think" compact lines={[
+        T("วันนี้ผมขอเป็น “คุณหมอเณร” ครับ เพราะพระพุทธเจ้าสอนอริยสัจ 4 เหมือนหมอรักษาคนไข้เลย", "Today I'm Doctor Novice! The Buddha taught the Four Noble Truths the way a doctor treats a patient."),
+        { ...T("คุณหมอครับ… ผมกินไก่ทอดไป 12 ชิ้น… โอ๊ยยย ท้องจะระเบิดแล้ว", "Doctor… I ate 12 pieces of fried chicken… ooooh, my tummy's going to explode."), who: "tup" },
+        T("หมอที่เก่งจะทำ 4 ขั้นตามลำดับ ลองแตะการ์ดให้ถูกลำดับ ขั้นที่ 1 ถึง 4 ดูสิ!", "A good doctor works in 4 steps, in order. Tap the cards in the right order, step 1 to 4!"),
+      ]} />
+      <div className="truths">
+        {order.map((k) => {
+          const x = truths[k]; const pos = picked.indexOf(k);
+          return (
+            <button key={k} className={"truth" + (pos >= 0 ? " open" : "") + (wrong === k ? " shake" : "")} onClick={() => tap(k)}>
+              {pos >= 0 ? (
+                <>
+                  <span className="step">{pos + 1}</span>
+                  <span className="t-name">{t(x.n)}</span>
+                  <span className="t-mean">{t(x.m)}</span>
+                  <span className="t-ex"><b>{t(T("เจ้าตูบ:", "Tup:"))}</b> {t(x.tup)}</span>
+                  <span className="t-ex"><b>{t(T("ชีวิตเรา:", "Our life:"))}</b> {t(x.life)}</span>
+                </>
+              ) : (
+                <>
+                  <span className="step q">?</span>
+                  <span className="t-q">{t(x.q)}</span>
+                </>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      {wrong != null && !done && <p className="feedback tight full">{t(T("ยังไม่ใช่ขั้นนี้ หมอต้องรู้ก่อนว่าป่วยเป็นอะไร แล้วค่อยหาสาเหตุ หาทางหาย และให้ยา", "Not that step yet. A doctor first finds what's wrong, then the cause, then whether it can be cured, then the medicine."))}</p>}
+    </div>
+  );
+}
+
+/* ---------- 8. Karma garden ---------- */
+function Karma({ complete }) {
+  const t = useT();
+  const acts = [
+    { a: T("ช่วยแม่ล้างจาน", "Help Mum wash the dishes"), g: true },
+    { a: T("แกล้งดึงหางแมว", "Pull the cat's tail"), g: false },
+    { a: T("แบ่งขนมให้เพื่อน", "Share snacks with a friend"), g: true },
+    { a: T("พูดจาเพราะกับคุณยาย", "Speak kindly to Grandma"), g: true },
+    { a: T("ลอกการบ้านเพื่อน", "Copy a friend's homework"), g: false },
+    { a: T("รดน้ำต้นไม้", "Water the plants"), g: true },
+    { a: T("หัวเราะเยาะเพื่อนที่ล้ม", "Laugh at a friend who fell"), g: false },
+    { a: T("ใส่บาตรตอนเช้ากับครอบครัว", "Give alms to the monks with family"), g: true },
+    { a: T("ให้อาหารเจ้าตูบ", "Feed Tup"), g: true },
+  ];
+  const [garden, setGarden] = useState([]);
+  const flowers = garden.filter((x) => x.g).length;
+  const done = flowers >= 6;
+  useEffect(() => { if (done) { sfx.fanfare(); complete(); } }, [done]);
+  const [last, setLast] = useState(null);
+  return (
+    <div className="split">
+      <Narrator pose="wave" compact lines={[
+        T("“กรรม” แปลว่า การกระทำ ทั้งที่ทำด้วยมือ พูดด้วยปาก และคิดด้วยใจ", "Karma just means action: what we do with our hands, say with our mouths, and think in our hearts."),
+        T("ทุกการกระทำเหมือนการปลูกเมล็ด ทำดีได้ดอกไม้ ทำไม่ดีได้ต้นหนาม ลองเลือกการกระทำแล้วดูสวนของเราโตสิ!", "Every action plants a seed. Good ones grow flowers, unkind ones grow thorns. Pick actions and watch your garden grow!"),
+        T("ปลูกดอกไม้ให้ได้ 6 ดอก รับดอกบัวไปเลย", "Grow 6 flowers to earn a lotus."),
+      ]} />
+      <div className="karma">
+        <div className="garden" aria-label="garden">
+          {garden.length === 0 && <span className="empty">{t(T("สวนยังว่างอยู่… เลือกการกระทำด้านล่างเพื่อปลูก", "Your garden is empty… pick an action below to plant."))}</span>}
+          {garden.map((p, k) => (
+            <svg key={k} className={"plant " + (p.g ? "flower" : "thorn")} viewBox="0 0 40 60" aria-hidden="true">
+              <path d="M20 58V28" className="stem" />
+              {p.g ? (<g><circle cx="20" cy="18" r="6" className="core" />{[0, 60, 120, 180, 240, 300].map((r) => <ellipse key={r} cx="20" cy="8" rx="5" ry="8" className="petal" transform={`rotate(${r} 20 18)`} />)}<circle cx="20" cy="18" r="5" className="core" /><path d="M20 44c-6-6-12-4-12-4 3 6 12 4 12 4z" className="leaf" /></g>)
+                : (<g><path d="M20 30l-9-4 9-2-7-9 8 4 0-11 3 10 7-6-4 9 10 1-10 4z" className="spike" /><path d="M20 44l-8-3M20 50l8-3M20 38l7-2" className="thornline" /></g>)}
+            </svg>
+          ))}
+        </div>
+        <p className="center-text"><b>{t(T("ดอกไม้", "Flowers"))} {flowers}</b> · {t(T("ต้นหนาม", "Thorns"))} {garden.length - flowers}</p>
+        {last && <p className={"feedback " + (last.g ? "just" : "tight")}>{last.g ? t(T("ปลูกดอกไม้ 1 ดอก! ทำดี ใจก็ฟู", "A flower sprouts! Good deeds make the heart bloom.")) : t(T("ต้นหนามงอก… ปลูกแล้วถอนไม่ได้ แต่เราปลูกดอกไม้เพิ่มได้เสมอ และครั้งหน้าเลือกใหม่ได้", "A thorn bush grows… you can't unplant it, but you can always plant more flowers, and choose differently next time."))}</p>}
+        <div className="acts">
+          {acts.map((x, k) => (
+            <button key={k} className="act" disabled={done} onClick={() => { x.g ? sfx.ding() : sfx.boing(); setLast(x); setGarden([...garden, x]); }}>{t(x.a)}</button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- 9. Final quiz + certificate ---------- */
+function Final({ complete, lotuses, total, name, setName }) {
+  const t = useT();
+  const qs = [
+    { q: T("พระพุทธเจ้าเดิมเป็นใคร?", "Who was the Buddha before he awakened?"), o: [T("เจ้าชายสิทธัตถะ", "Prince Siddhartha"), T("พ่อค้าขายไก่ทอด", "A fried-chicken seller"), T("นักบินอวกาศ", "An astronaut")], a: 0 },
+    { q: T("พระรัตนตรัยมีอะไรบ้าง?", "What is the Triple Gem?"), o: [T("ทอง เงิน เพชร", "Gold, silver, diamonds"), T("พระพุทธ พระธรรม พระสงฆ์", "Buddha, Dhamma, Sangha"), T("ไก่ทอด ลูกบอล เณร", "Chicken, ball, novice")], a: 1 },
+    { q: T("โทษเจ้าตูบว่าทำแจกันแตก ทั้งที่เราทำเอง ผิดศีลข้อไหน?", "Blaming Tup for a vase you broke breaks which precept?"), o: [T("ข้อ 1 ไม่ทำร้ายสัตว์", "1: don't harm"), T("ข้อ 4 ไม่พูดโกหก", "4: don't lie"), T("ข้อ 5 ไม่ดื่มเหล้า", "5: no alcohol")], a: 1 },
+    { q: T("ทางสายกลางเหมือนสายพิณแบบไหน?", "The Middle Way is like a string that is…"), o: [T("หย่อนสุด ๆ", "super loose"), T("ตึงจนขาด", "tight enough to snap"), T("ขึงพอดี", "tuned just right")], a: 2 },
+    { q: T("เวลาใจวิ่งไปคิดเรื่องอื่น ควรทำอย่างไร?", "When your mind wanders off, what should you do?"), o: [T("ดุตัวเองแรง ๆ", "Scold yourself"), T("ค่อย ๆ พากลับมาที่ลมหายใจ", "Gently come back to the breath"), T("ไปหาไก่ทอดกิน", "Go find fried chicken")], a: 1 },
+    { q: T("สาเหตุของทุกข์ (สมุทัย) คืออะไร?", "What causes suffering (samudaya)?"), o: [T("ความอยากไม่รู้จักพอ", "Craving that's never satisfied"), T("ฝนตก", "Rain"), T("การบ้าน", "Homework")], a: 0 },
+  ];
+  const [ans, setAns] = useState({});
+  const right = qs.filter((q, k) => ans[k] === q.a).length;
+  const allRight = right === qs.length;
+  useEffect(() => { if (allRight) { sfx.fanfare(); complete(); } }, [allRight]);
+  return (
+    <div className="final">
+      <div className="quiz-list">
+        {qs.map((q, k) => (
+          <div key={k} className="quiz-box">
+            <h3><span className="qn">{k + 1}</span>{t(q.q)}</h3>
+            <div className="choices">
+              {q.o.map((o, j) => (
+                <button key={j} className={"choice" + (ans[k] === j ? (j === q.a ? " right" : " wrong") : "")}
+                  onClick={() => { setAns({ ...ans, [k]: j }); j === q.a ? sfx.ding() : sfx.boing(); }}>{t(o)}</button>
+              ))}
+            </div>
+          </div>
+        ))}
+        <p className="center-text"><b>{t(T(`ตอบถูก ${right}/${qs.length} ข้อ`, `${right}/${qs.length} correct`))}</b>{!allRight && " · " + t(T("ตอบให้ถูกครบทุกข้อเพื่อรับใบประกาศ", "Get them all right to unlock your certificate"))}</p>
+      </div>
+      {allRight && (
+        <div className="cert">
+          <img className="cert-nen" src={IMG.jump} alt="" />
+          <label htmlFor="kidname" className="name-label">{t(T("เขียนชื่อของหนูตรงนี้", "Write your name here"))}</label>
+          <input id="kidname" className="name-in" value={name} maxLength={30} onChange={(e) => setName(e.target.value)} placeholder={t(T("ชื่อเล่น", "Your name"))} />
+          <div className="cert-paper">
+            <span className="cert-eyebrow">{t(T("ใบประกาศเกียรติคุณ", "Certificate of Merit"))}</span>
+            <h2>{name || t(T("นักผจญภัยตัวน้อย", "Little Adventurer"))}</h2>
+            <p>{t(T("ได้ผ่านการผจญภัยในแดนธรรมะ กับเณรต้นบุญและเจ้าตูบ เป็น “บัณฑิตน้อยแดนธรรมะ”", "has completed the Dhamma Land adventure with Novice Tonboon and Tup, and is now a “Little Dhamma Scholar”."))}</p>
+            <div className="cert-lotus">{Array.from({ length: total }).map((_, k) => <Lotus key={k} on={k < lotuses} size={30} />)}</div>
+            <p className="motto">{t(T("ไม่ทำชั่ว · ทำความดี · ทำใจให้ผ่องใส", "Avoid harm · Do good · Keep your heart clear"))}</p>
+            <span className="cert-note">{t(T("หัวใจของคำสอน (โอวาทปาติโมกข์)", "The heart of the teaching (Ovada Patimokkha)"))}</span>
+          </div>
+          <p className="center-text small">{t(T("ถ่ายภาพหน้าจอไปอวดคุณพ่อคุณแม่ได้เลย!", "Take a screenshot to show your family!"))}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- chapters ---------- */
+const CHAPTERS = [
+  { id: "meet", C: Meet, title: T("พบเณรต้นบุญ", "Meet Tonboon"), sub: T("ทักทายเพื่อนใหม่", "Say hello"), col: "saffron" },
+  { id: "story", C: Story, title: T("เจ้าชายผู้ตื่น", "The Prince Who Woke Up"), sub: T("ประวัติพระพุทธเจ้า", "The Buddha's life"), col: "gold" },
+  { id: "jewels", C: Jewels, title: T("แก้ว 3 ดวง", "Three Jewels"), sub: T("พระรัตนตรัย", "The Triple Gem"), col: "blue" },
+  { id: "precepts", C: Precepts, title: T("ศีล 5", "Five Precepts"), sub: T("เกมทำดีหรือผิดศีล", "Good deed or not?"), col: "leaf" },
+  { id: "middle", C: MiddleWay, title: T("สายพิณพอดี", "The Just-Right String"), sub: T("ทางสายกลาง", "The Middle Way"), col: "lotus" },
+  { id: "mind", C: Mind, title: T("ใจลูกหมา", "Puppy Mind"), sub: T("ฝึกสติ พุทโธ", "Mindful breathing"), col: "sky" },
+  { id: "truths", C: Truths, title: T("คุณหมอเณร", "Doctor Novice"), sub: T("อริยสัจ 4", "Four Noble Truths"), col: "saffron" },
+  { id: "karma", C: Karma, title: T("สวนแห่งกรรม", "The Karma Garden"), sub: T("ทำดีได้ดี", "Plant good seeds"), col: "leaf" },
+  { id: "final", C: Final, title: T("สอบบัณฑิตน้อย", "Final Challenge"), sub: T("รับใบประกาศ", "Get your certificate"), col: "gold" },
+];
+
+/* ---------- HyperFrames video pieces ---------- */
+const VID = { intro: "video/intro.mp4", poster: "video/intro-poster.webp", bloom: "video/bloom.mp4", card: (k) => `video/card-${k + 1}.mp4`, still: (k) => `video/card-${k + 1}.webp` };
+
+// React does not reliably set the muted attribute, which browsers require for autoplay; do it by hand.
+function useAutoplay(ref, on = true) {
+  useEffect(() => { const v = ref.current; if (!v || !on) return; v.muted = true; const p = v.play(); if (p && p.catch) p.catch(() => {}); }, [on]);
+}
+
+// Full-screen curtain: plays a stop's animated title card, then gets out of the way.
+function Curtain({ src, poster, onDone }) {
+  const t = useT();
+  const [leaving, setLeaving] = useState(false);
+  const vref = useRef(null);
+  const gone = useRef(false);
+  useAutoplay(vref);
+  const finish = () => { if (gone.current) return; gone.current = true; setLeaving(true); setTimeout(onDone, 280); };
+  useEffect(() => { const id = setTimeout(finish, 5000); const k = (e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") finish(); }; addEventListener("keydown", k); return () => { clearTimeout(id); removeEventListener("keydown", k); }; }, []);
+  return (
+    <div className={"curtain" + (leaving ? " leaving" : "")} onClick={finish} role="dialog" aria-label={t(T("เปิดด่าน", "Opening the stop"))}>
+      <video ref={vref} className="curtain-vid" src={src} poster={poster} muted playsInline onEnded={finish} onError={finish} />
+      <button className="btn ghost-btn curtain-skip" onClick={(e) => { e.stopPropagation(); finish(); }}>{t(T("ข้าม ▶", "Skip ▶"))}</button>
+    </div>
+  );
+}
+
+// Lotus bloom pop-up when a stop is completed.
+function Bloom({ onDone }) {
+  const t = useT();
+  const vref = useRef(null);
+  useAutoplay(vref);
+  useEffect(() => { const id = setTimeout(onDone, 3400); return () => clearTimeout(id); }, []);
+  return (
+    <div className="bloom" onClick={onDone} role="status">
+      <div className="bloom-card">
+        <video ref={vref} src={VID.bloom} poster="video/bloom.webp" muted playsInline />
+        <strong>{t(T("ได้ดอกบัวแล้ว!", "You earned a lotus!"))}</strong>
+      </div>
+    </div>
+  );
+}
+
+// Map thumbnail: frozen on its title frame, plays when hovered or focused.
+function StopThumb({ k }) {
+  const ref = useRef(null);
+  return (
+    <span className="thumb"
+      onMouseEnter={() => { const v = ref.current; if (v && !reduced()) { v.muted = true; v.play().catch(() => {}); } }}
+      onMouseLeave={() => { const v = ref.current; if (v) v.load(); }}>
+      <video ref={ref} src={VID.card(k)} poster={VID.still(k)} muted playsInline preload="none" tabIndex={-1} aria-hidden="true" />
+    </span>
+  );
+}
+
+function HeroFilm() {
+  const t = useT();
+  const ref = useRef(null);
+  const [playing, setPlaying] = useState(!reduced());
+  useAutoplay(ref, !reduced());
+  const toggle = () => { const v = ref.current; if (!v) return; if (v.paused) { v.play().catch(() => {}); setPlaying(true); } else { v.pause(); setPlaying(false); } };
+  return (
+    <div className="film">
+      <video ref={ref} src={VID.intro} poster={VID.poster} muted loop playsInline
+        aria-label={t(T("ภาพยนตร์เปิดเรื่อง: เณรต้นบุญและเจ้าตูบชวนผจญภัย", "Opening film: Novice Tonboon and Tup invite you on an adventure"))} />
+      <button className="film-btn" onClick={toggle}>{playing ? t(T("❚❚ หยุด", "❚❚ Pause")) : t(T("▶ เล่น", "▶ Play"))}</button>
+    </div>
+  );
+}
+
+function App() {
+  const [lang, setLang] = useState(() => store.get("lang", "th"));
+  const [done, setDone] = useState(() => store.get("done", []));
+  const [cur, setCur] = useState(null);
+  const [name, setName] = useState(() => store.get("name", ""));
+  const [mute, setMute] = useState(false);
+  const [curtain, setCurtain] = useState(null);
+  const [bloom, setBloom] = useState(false);
+  const top = useRef(null);
+  const doneRef = useRef(done);
+  doneRef.current = done;
+  useEffect(() => store.set("lang", lang), [lang]);
+  useEffect(() => store.set("done", done), [done]);
+  useEffect(() => store.set("name", name), [name]);
+  useEffect(() => { muted = mute; if (mute) try { speechSynthesis.cancel(); } catch (e) {} }, [mute]);
+  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
+  const t = (x) => x[lang];
+  const go = (k) => {
+    audio(); try { speechSynthesis.cancel(); } catch (e) {}
+    setCur(k); setBloom(false);
+    if (k != null && !reduced()) { setCurtain(k); sfx.pop(); }
+    setTimeout(() => top.current && top.current.scrollIntoView({ behavior: "auto" }), 0);
+  };
+  const complete = (id) => () => {
+    if (doneRef.current.includes(id)) return;
+    doneRef.current = [...doneRef.current, id];
+    setDone((d) => (d.includes(id) ? d : [...d, id]));
+    if (!reduced()) setBloom(true);
+  };
+  const ch = cur != null ? CHAPTERS[cur] : null;
+  return (
+    <LangCtx.Provider value={lang}>
+      <div ref={top} />
+      <header className="topbar">
+        <button className="brand" onClick={() => go(null)}>
+          <Lotus size={30} />
+          <span>{t(T("แดนธรรมะ", "Dhamma Land"))}</span>
+        </button>
+        <div className="lotus-bar" aria-label={t(T("ดอกบัวที่เก็บได้", "Lotuses collected"))}>
+          {CHAPTERS.map((c) => <Lotus key={c.id} on={done.includes(c.id)} size={22} />)}
+          <span className="count">{done.length}/{CHAPTERS.length}</span>
+        </div>
+        <div className="tools">
+          <button className="chip" onClick={() => setMute(!mute)} aria-pressed={mute}>{mute ? t(T("เปิดเสียง", "Sound on")) : t(T("ปิดเสียง", "Mute"))}</button>
+          <button className="chip" onClick={() => setLang(lang === "th" ? "en" : "th")}>{lang === "th" ? "EN" : "ไทย"}</button>
+        </div>
+      </header>
+
+      {!ch ? (
+        <main>
+          <section className="hero">
+            <HeroFilm />
+            <div className="hero-text">
+              <span className="eyebrow">{t(T("ผจญภัยกับเณรต้นบุญและเจ้าตูบ", "An adventure with Novice Tonboon & Tup"))}</span>
+              <h1>{t(T("ผจญภัยแดนธรรมะ", "Dhamma Land Adventure"))}</h1>
+              <p>{t(T("9 ด่าน เรียนรู้คำสอนของพระพุทธเจ้า ผ่านเกม เรื่องเล่า และเสียงหัวเราะ เก็บดอกบัวให้ครบ!", "9 stops to learn the Buddha's teachings through games, stories and giggles. Collect every lotus!"))}</p>
+              <button className="btn big hero-btn" onClick={() => go(Math.max(0, CHAPTERS.findIndex((c) => !done.includes(c.id))))}>
+                {done.length === 0 ? t(T("เริ่มผจญภัย ▶", "Start the adventure ▶")) : done.length === CHAPTERS.length ? t(T("ดูใบประกาศ ▶", "See my certificate ▶")) : t(T("ผจญภัยต่อ ▶", "Continue ▶"))}
+              </button>
+            </div>
+          </section>
+
+          <section className="map">
+            <h2>{t(T("แผนที่การผจญภัย", "Adventure map"))}</h2>
+            <ol className="stops">
+              {CHAPTERS.map((c, k) => (
+                <li key={c.id}>
+                  <button className={"stop col-" + c.col + (done.includes(c.id) ? " got" : "")} onClick={() => go(k)}
+                    onFocus={(e) => { const v = e.currentTarget.querySelector("video"); if (v && !reduced()) { v.muted = true; v.play().catch(() => {}); } }}
+                    onBlur={(e) => { const v = e.currentTarget.querySelector("video"); if (v) v.load(); }}>
+                    <StopThumb k={k} />
+                    <span className="stop-body">
+                      <span className="num">{k + 1}</span>
+                      <span className="stop-text">
+                        <span className="stop-title">{t(c.title)}</span>
+                        <span className="stop-sub">{t(c.sub)}</span>
+                      </span>
+                      <span className="stop-lotus"><Lotus on={done.includes(c.id)} size={28} /></span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </section>
+          <footer className="foot">
+            <p>{t(T("สำหรับเด็กอายุประมาณ 8–12 ปี · ผู้ปกครองและคุณครูใช้ประกอบการสอนวิชาพระพุทธศาสนาได้", "For kids aged about 8–12 · Parents and teachers can use it alongside Buddhism lessons"))}</p>
+          </footer>
+        </main>
+      ) : (
+        <main className={"chapter col-" + ch.col}>
+          <div className="ch-head">
+            <button className="btn ghost-btn" onClick={() => go(null)}>{t(T("◀ แผนที่", "◀ Map"))}</button>
+            <div>
+              <span className="eyebrow">{t(T("ด่านที่", "Stop"))} {cur + 1} · {t(ch.sub)}</span>
+              <h1>{t(ch.title)}</h1>
+            </div>
+          </div>
+          <ch.C key={ch.id + lang} complete={complete(ch.id)} lotuses={done.length} total={CHAPTERS.length} name={name} setName={setName} />
+          {done.includes(ch.id) && ch.id !== "final" && <Done isLast={cur === CHAPTERS.length - 1} onNext={() => go(cur + 1)} />}
+        </main>
+      )}
+      {curtain != null && <Curtain key={curtain} src={VID.card(curtain)} poster={VID.still(curtain)} onDone={() => setCurtain(null)} />}
+      {bloom && curtain == null && <Bloom onDone={() => setBloom(false)} />}
+    </LangCtx.Provider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);

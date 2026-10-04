@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=720, height=720" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Itim"; src: url("assets/fonts/Itim-Regular.ttf") format("truetype"); }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 720px; height: 720px; overflow: hidden; background: #fff1f5; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; }
+      #scene { position: absolute; inset: 0; background: #fff1f5; }
+      #rays { position: absolute; left: 360px; top: 380px; width: 1200px; height: 1200px; margin: -600px 0 0 -600px; display: block; }
+      #rays path { fill: #f7c843; opacity: .45; }
+      #ring { position: absolute; left: 360px; top: 380px; width: 300px; height: 300px; margin: -150px 0 0 -150px; border-radius: 50%; border: 14px solid #f27aa0; display: block; }
+      #lotus { position: absolute; left: 360px; top: 360px; width: 440px; height: 440px; margin: -220px 0 0 -220px; display: block; overflow: visible; }
+      #lotus path { stroke: #2c1a0e; stroke-width: 2.4; stroke-linejoin: round; }
+      .p-back { fill: #f27aa0; } .p-mid { fill: #ff8fb1; } .p-front { fill: #ffb3c9; }
+      #pad { fill: #3f9a52; }
+      #plus { position: absolute; left: 0; right: 0; top: 40px; display: flex; justify-content: center; }
+      #plus span { display: block; font-family: "Itim", sans-serif; font-size: 120px; line-height: 1; color: #f28a1a; -webkit-text-stroke: 4px #2c1a0e; paint-order: stroke fill; }
+      .spark { position: absolute; left: 340px; top: 360px; width: 44px; height: 44px; display: block; }
+      .spark path { stroke: #2c1a0e; stroke-width: 2.5; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="2.8" data-width="720" data-height="720">
+      <div id="scene" class="clip" data-start="0" data-duration="2.8" data-track-index="0">
+        <svg id="rays" viewBox="-100 -100 200 200" aria-hidden="true"></svg>
+        <div id="ring"></div>
+        <div id="sparks"></div>
+        <svg id="lotus" viewBox="0 0 200 200" aria-hidden="true"><ellipse id="pad" cx="100" cy="158" rx="70" ry="14" /></svg>
+        <div id="plus"><span>+1</span></div>
+      </div>
+    </div>
+    <script>
+      function mulberry32(a) { return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+      const rnd = mulberry32(9);
+      const NS = "http://www.w3.org/2000/svg";
+      const rays = document.getElementById("rays");
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * Math.PI * 2, b = a + Math.PI / 16;
+        const p = document.createElementNS(NS, "path");
+        p.setAttribute("d", `M0 0 L${Math.cos(a) * 100} ${Math.sin(a) * 100} L${Math.cos(b) * 100} ${Math.sin(b) * 100}Z`);
+        rays.appendChild(p);
+      }
+      const lotus = document.getElementById("lotus");
+      const petal = (rot, len, wid, cls) => {
+        const p = document.createElementNS(NS, "path");
+        p.setAttribute("d", `M100 150 C${100 - wid} ${150 - len * .45} ${100 - wid * .55} ${150 - len * .85} 100 ${150 - len} C${100 + wid * .55} ${150 - len * .85} ${100 + wid} ${150 - len * .45} 100 150Z`);
+        p.setAttribute("class", "lp " + cls); p.setAttribute("transform", `rotate(${rot} 100 150)`);
+        lotus.appendChild(p);
+      };
+      [-80, -55, 55, 80].forEach((r) => petal(r, 92, 30, "p-back"));
+      [-32, 32].forEach((r) => petal(r, 112, 34, "p-mid"));
+      [-14, 14].forEach((r) => petal(r, 120, 30, "p-mid"));
+      petal(0, 128, 34, "p-front");
+      const colors = ["#f7c843", "#7fc8ee", "#3f9a52", "#f27aa0", "#fffdf7"];
+      const sp = document.getElementById("sparks"), bits = [];
+      for (let i = 0; i < 18; i++) {
+        const s = document.createElementNS(NS, "svg");
+        s.setAttribute("viewBox", "0 0 40 40"); s.setAttribute("class", "spark");
+        s.innerHTML = `<path d="M20 3l5 11 12 1-9 8 3 12-11-6-11 6 3-12-9-8 12-1z" fill="${colors[i % 5]}"/>`;
+        sp.appendChild(s);
+        const ang = (i / 18) * Math.PI * 2 + rnd() * .3, d = 220 + rnd() * 110;
+        bits.push({ el: s, x: Math.cos(ang) * d, y: Math.sin(ang) * d, r: (rnd() - .5) * 400 });
+      }
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo("#rays", { scale: 0, rotation: 0 }, { scale: 1, rotation: 60, duration: 2.8, ease: "power2.out" }, 0);
+      tl.fromTo("#pad", { scale: 0, svgOrigin: "100 158" }, { scale: 1, svgOrigin: "100 158", duration: .4, ease: "back.out(2)" }, .05);
+      tl.fromTo("#lotus .lp", { scaleY: 0, scaleX: .4, svgOrigin: "100 150" }, { scaleY: 1, scaleX: 1, svgOrigin: "100 150", duration: .5, ease: "back.out(2.4)", stagger: .07 }, .2);
+      tl.fromTo("#ring", { scale: .3, opacity: 1 }, { scale: 2.2, opacity: 0, duration: .9, ease: "power2.out" }, .75);
+      bits.forEach((b) => {
+        tl.fromTo(b.el, { x: 0, y: 0, scale: 0, rotation: 0, opacity: 1 }, { x: b.x, y: b.y, scale: 1, rotation: b.r, duration: .9, ease: "power3.out" }, .8);
+        tl.to(b.el, { opacity: 0, scale: .4, duration: .5, ease: "power1.in" }, 1.9);
+      });
+      tl.fromTo("#plus span", { y: 60, scale: 0, rotation: -20 }, { y: 0, scale: 1, rotation: 0, duration: .55, ease: "back.out(3)" }, .9);
+      tl.to("#lotus", { y: -10, duration: .35, ease: "sine.inOut", yoyo: true, repeat: 3 }, 1.3);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
