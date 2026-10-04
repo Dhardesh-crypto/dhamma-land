@@ -128,7 +128,7 @@ function Done({ onNext, isLast }) {
     <div className="done-banner" role="status">
       <Lotus size={44} />
       <div>
-        <strong>{t(label || T("ได้ดอกบัวแล้ว!", "You earned a lotus!"))}</strong>
+        <strong>{t(T("ได้ดอกบัวแล้ว!", "You earned a lotus!"))}</strong>
         <span>{t(T("เก่งมาก ไปด่านต่อไปกันเลย", "Great job. On to the next stop!"))}</span>
       </div>
       <button className="btn big" onClick={onNext}>{isLast ? t(T("กลับแผนที่", "Back to map")) : t(T("ด่านต่อไป ▶", "Next stop ▶"))}</button>
