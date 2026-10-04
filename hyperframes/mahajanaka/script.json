@@ -1,0 +1,29 @@
+{
+  "title": {"th": "พระมหาชนก", "en": "Mahajanaka"},
+  "virtue": {"th": "วิริยะ · ความเพียร", "en": "Perseverance"},
+  "scenes": [
+    {"img": "m1", "lines": [
+      {"who": "nen", "th": "นานมาแล้ว มีเจ้าชายหนุ่มชื่อ “มหาชนก” ท่านอยากกู้บ้านเมืองของพ่อกลับคืนมา จึงลงเรือใหญ่ออกทะเลไปค้าขาย หาเงินทุน", "en": "Long ago there lived a young prince called Mahajanaka. He wanted to win back his father's kingdom, so he set sail on a great ship to trade and earn the money he needed."}
+    ]},
+    {"img": "m2", "lines": [
+      {"who": "nen", "th": "เรือแล่นไปได้เจ็ดวัน ก็เจอพายุใหญ่ เรือกำลังจะจม ทุกคนตกใจร้องไห้ แต่เจ้าชายไม่ตกใจ ท่านกินอาหารจนอิ่ม เอาน้ำมันทาตัวกันน้ำทะเล แล้วปีนขึ้นยอดเสา กระโดดลงทะเลไปให้ไกลที่สุด", "en": "After seven days a huge storm struck and the ship began to sink. Everyone panicked and cried, but the prince stayed calm. He ate a good meal, rubbed oil on his skin against the salt water, climbed to the top of the mast, and leapt as far into the sea as he could."},
+      {"who": "tup", "th": "กินอิ่มก่อนค่อยลุย… แผนนี้ผมชอบ!", "en": "Eat first, then go for it… I like this plan!"}
+    ]},
+    {"img": "m3", "lines": [
+      {"who": "nen", "th": "เจ้าชายว่ายน้ำอยู่กลางทะเล มองไปทางไหนก็ไม่เห็นฝั่งเลย ท่านว่ายอยู่อย่างนั้นเจ็ดวันเจ็ดคืน ไม่ยอมแพ้", "en": "The prince swam in the middle of the ocean. Wherever he looked, there was no land. He kept swimming for seven days and seven nights, and never gave up."}
+    ]},
+    {"img": "m4", "lines": [
+      {"who": "nen", "th": "แล้วนางมณีเมขลา เทพธิดาผู้รักษาทะเล ก็ปรากฏตัวขึ้น", "en": "Then Manimekhala, the goddess who guards the sea, appeared."},
+      {"who": "goddess", "th": "เจ้าว่ายอยู่กลางทะเลกว้าง มองไม่เห็นฝั่ง แล้วจะพยายามไปทำไม?", "en": "You swim in this wide sea and cannot see the shore. Why keep trying?"},
+      {"who": "prince", "th": "เพราะความพยายามไม่เคยสูญเปล่า ถ้าเราหยุดว่าย เราจมแน่ แต่ถ้าเรายังว่ายต่อไป ก็ยังมีหวัง", "en": "Because effort is never wasted. If I stop swimming, I will surely sink. But if I keep going, there is still hope."}
+    ]},
+    {"img": "m5", "lines": [
+      {"who": "nen", "th": "นางมณีเมขลาชื่นชมความเพียรของเจ้าชายมาก จึงอุ้มท่านเหาะไปส่งถึงเมืองมิถิลา ต่อมาเจ้าชายได้เป็นพระราชาที่ดีและฉลาด", "en": "Manimekhala admired his perseverance so much that she carried him through the sky to the city of Mithila. Later the prince became a good and wise king."}
+    ]},
+    {"img": "lesson", "lines": [
+      {"who": "nen", "th": "ความเพียร คือไม่ยอมแพ้ ทำต่อไปทีละนิด แม้ยังไม่เห็นผล เหมือนตอนเราหัดว่ายน้ำ หรือท่องสูตรคูณ", "en": "Perseverance means not giving up, and keeping at it bit by bit even before you see results, like learning to swim or your times tables."},
+      {"who": "tup", "th": "ผมก็มีความเพียรนะ! ขอไก่ทอดทุกวันไม่เคยขาดเลย", "en": "I persevere too! I beg for fried chicken every single day!"},
+      {"who": "nen", "th": "อันนั้นเรียกว่าความอยาก เจ้าตูบ!", "en": "That's called craving, Tup!"}
+    ]}
+  ]
+}

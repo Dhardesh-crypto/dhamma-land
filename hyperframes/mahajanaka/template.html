@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="{{LANG}}">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1280, height=720" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Itim"; src: url("assets/fonts/Itim-Regular.ttf") format("truetype"); }
+      @font-face { font-family: "Mali"; src: url("assets/fonts/Mali-SemiBold.ttf") format("truetype"); font-weight: 600; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1280px; height: 720px; overflow: hidden; background: #0d2a44; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Mali", sans-serif; color: #2c1a0e; }
+      .clip { position: absolute; inset: 0; }
+      .inner { position: absolute; inset: 0; overflow: hidden; }
+      .bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+      .nen { position: absolute; left: 60px; bottom: -20px; height: 520px; width: auto; display: block; }
+      .tup { position: absolute; right: 80px; bottom: 30px; width: 300px; height: 300px; object-fit: contain; display: block; }
+
+      /* intro title */
+      #intro { background: #fff6e4; }
+      #intro .rays { position: absolute; left: 640px; top: 360px; width: 1800px; height: 1800px; margin: -900px 0 0 -900px; display: block; }
+      #intro .rays path { fill: #7fc8ee; opacity: .35; }
+      #intro .card { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+      .kicker { display: block; font-family: "Itim", sans-serif; font-size: 40px; background: #f7c843; border: 5px solid #2c1a0e; border-radius: 999px; padding: 2px 30px; box-shadow: 6px 6px 0 #2c1a0e; }
+      .title { display: block; font-family: "Itim", sans-serif; font-size: 150px; line-height: 1.15; color: #3d8fd1; -webkit-text-stroke: 4px #2c1a0e; paint-order: stroke fill; }
+      .virtue { display: block; font-family: "Itim", sans-serif; font-size: 44px; background: #fffdf7; border: 5px solid #2c1a0e; border-radius: 22px; padding: 4px 28px; box-shadow: 6px 6px 0 #2c1a0e; }
+
+      /* subtitles */
+      .line .sub { position: absolute; left: 90px; right: 90px; bottom: 34px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; background: rgba(255, 253, 247, .96); border: 5px solid #2c1a0e; border-radius: 26px; padding: 14px 26px 18px; box-shadow: 8px 8px 0 #2c1a0e; }
+      .who { display: block; font-family: "Itim", sans-serif; font-size: 26px; color: #fffdf7; background: #f28a1a; border: 3px solid #2c1a0e; border-radius: 999px; padding: 0 16px; }
+      .who-tup .who { background: #c79a4f; }
+      .who-goddess .who { background: #3d8fd1; }
+      .who-prince .who { background: #3f9a52; }
+      .say { display: block; font-size: 33px; line-height: 1.45; max-width: 1060px; }
+      .who-goddess .say, .who-prince .say { font-style: italic; }
+
+      /* outro */
+      #outro .card { position: absolute; left: 0; right: 0; top: 70px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+      .moral { display: block; font-family: "Itim", sans-serif; font-size: 76px; color: #f28a1a; -webkit-text-stroke: 3px #2c1a0e; paint-order: stroke fill; background: #fffdf7; border: 6px solid #2c1a0e; border-radius: 34px; padding: 6px 40px 14px; box-shadow: 10px 10px 0 #2c1a0e; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="{{TOTAL}}" data-width="1280" data-height="720">
+        <div id="intro" class="clip" data-start="0" data-duration="3.8" data-track-index="0">
+          <svg class="rays" viewBox="-100 -100 200 200" aria-hidden="true"></svg>
+          <div class="card"><span class="kicker">{{KICKER}}</span><span class="title">{{TITLE}}</span><span class="virtue">{{VIRTUE}}</span></div>
+        </div>
+        {{SCENES}}
+        {{LINES}}
+        <div id="outro" class="clip" data-start="{{OUTRO_START}}" data-duration="{{OUTRO_DUR}}" data-track-index="4">
+          <div class="card"><span class="moral">{{MORAL}}</span></div>
+        </div>
+        {{AUDIO}}
+    </div>
+    <script>
+      const NS = "http://www.w3.org/2000/svg";
+      const rays = document.querySelector("#intro .rays");
+      for (let i = 0; i < 18; i++) {
+        const a = (i / 18) * Math.PI * 2, b = a + Math.PI / 18;
+        const p = document.createElementNS(NS, "path");
+        p.setAttribute("d", `M0 0 L${Math.cos(a) * 100} ${Math.sin(a) * 100} L${Math.cos(b) * 100} ${Math.sin(b) * 100}Z`);
+        rays.appendChild(p);
+      }
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo("#intro .rays", { rotation: 0, scale: 0.5 }, { rotation: 30, scale: 1, duration: 3.8, ease: "power1.out" }, 0);
+      tl.fromTo("#intro .kicker", { y: -60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "back.out(2)" }, 0.2);
+      tl.fromTo("#intro .title", { scale: 0.3, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.7, ease: "back.out(2.2)" }, 0.45);
+      tl.fromTo("#intro .virtue", { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "back.out(2)" }, 0.9);
+      {{TWEENS}}
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

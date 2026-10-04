@@ -17,7 +17,7 @@ const store = {
 
 /* ---------- sound ---------- */
 let ac = null;
-const audio = () => { try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === "suspended") ac.resume(); } catch (e) {} return ac; };
+const audio = () => { interacted = true; try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === "suspended") ac.resume(); } catch (e) {} return ac; };
 let muted = false;
 function tone(freq, dur, type = "sine", vol = 0.2, slide = 0) {
   const a = audio(); if (!a || muted) return;
@@ -43,9 +43,22 @@ const sfx = {
   },
 };
 
+// Recorded voices: audio/<key>.mp3 exists for every key in window.__VOICED__ (written by build.py).
+const VOICED = new Set(window.__VOICED__ || []);
+function voiceKey(lang, text) {
+  let h = 0x811c9dc5;
+  for (const b of new TextEncoder().encode(lang + "|" + text)) { h ^= b; h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(16).padStart(8, "0");
+}
+let clip = null;
+let interacted = false;
+function stopVoice() { try { if (clip) { clip.pause(); clip = null; } if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {} }
 function speak(text, lang) {
+  stopVoice(); if (muted) return;
+  const k = voiceKey(lang, text);
+  if (VOICED.has(k)) { clip = new Audio(`audio/${k}.mp3`); clip.play().catch(() => {}); return; }
   try {
-    const ss = window.speechSynthesis; if (!ss || muted) return; ss.cancel();
+    const ss = window.speechSynthesis; if (!ss) return;
     const u = new SpeechSynthesisUtterance(text.replace(/[“”"']/g, ""));
     u.lang = lang === "th" ? "th-TH" : "en-US"; u.rate = lang === "th" ? 0.95 : 1; u.pitch = 1.25;
     const v = ss.getVoices().find((v) => v.lang && v.lang.toLowerCase().startsWith(lang)); if (v) u.voice = v;
@@ -89,6 +102,7 @@ function Narrator({ pose = "wave", lines, onFinish, compact }) {
   const last = i >= lines.length - 1;
   const isTup = line.who === "tup";
   useEffect(() => { if (isTup) sfx.bark(); if (last && onFinish) onFinish(); }, [i, key]);
+  useEffect(() => { if (interacted) { const id = setTimeout(() => speak(t(line), lang), isTup ? 350 : 0); return () => clearTimeout(id); } }, [i, key, lang]);
   return (
     <div className={"narrator" + (compact ? " compact" : "")}>
       <img className={"nar-img pose-" + pose} src={IMG[pose]} alt={t(T("เณรต้นบุญกับเจ้าตูบ", "Novice Tonboon and Tup the puppy"))} />
@@ -114,7 +128,7 @@ function Done({ onNext, isLast }) {
     <div className="done-banner" role="status">
       <Lotus size={44} />
       <div>
-        <strong>{t(T("ได้ดอกบัวแล้ว!", "You earned a lotus!"))}</strong>
+        <strong>{t(label || T("ได้ดอกบัวแล้ว!", "You earned a lotus!"))}</strong>
         <span>{t(T("เก่งมาก ไปด่านต่อไปกันเลย", "Great job. On to the next stop!"))}</span>
       </div>
       <button className="btn big" onClick={onNext}>{isLast ? t(T("กลับแผนที่", "Back to map")) : t(T("ด่านต่อไป ▶", "Next stop ▶"))}</button>
@@ -159,6 +173,7 @@ function Story({ complete }) {
   const [i, setI] = useState(0);
   const [ans, setAns] = useState(null);
   const s = slides[i];
+  useEffect(() => { if (interacted) speak(t(s.text), lang); }, [i, lang]);
   const opts = [
     { l: T("วันวิสาขบูชา", "Visakha Bucha Day"), ok: true },
     { l: T("วันสงกรานต์", "Songkran (water festival)") },
@@ -172,7 +187,7 @@ function Story({ complete }) {
           <span className="pill">{t(T("ตอนที่", "Part"))} {i + 1}/4</span>
           <h3>{t(s.title)}</h3>
           <p>{t(s.text)}</p>
-          <p className="tup-line"><b>{t(T("เจ้าตูบ:", "Tup:"))}</b> {t(s.tup)}</p>
+          <button className="tup-line" onClick={() => { sfx.bark(); setTimeout(() => speak(t(s.tup), lang), 300); }}><b>{t(T("เจ้าตูบ:", "Tup:"))}</b> {t(s.tup)}</button>
           <div className="row">
             <button className="btn ghost-btn" disabled={i === 0} onClick={() => setI(i - 1)}>{t(T("◀ ก่อนหน้า", "◀ Previous"))}</button>
             <button className="btn ghost-btn" onClick={() => speak(t(s.text), lang)}>{t(T("ฟังเสียง", "Listen"))}</button>
@@ -587,6 +602,185 @@ const CHAPTERS = [
   { id: "final", C: Final, title: T("สอบบัณฑิตน้อย", "Final Challenge"), sub: T("รับใบประกาศ", "Get your certificate"), col: "gold" },
 ];
 
+/* ---------- Daily good-deed missions ---------- */
+const MISSIONS = [
+  T("ไหว้ขอบคุณคุณพ่อคุณแม่ก่อนนอน", "Wai and thank your parents before bed"),
+  T("ช่วยล้างจานหรือเก็บโต๊ะหลังกินข้าว", "Help wash the dishes or clear the table after a meal"),
+  T("หายใจ พุท–โธ 5 ครั้งก่อนนอน", "Breathe Bud–dho 5 times before bed"),
+  T("แบ่งขนมให้เพื่อนหรือพี่น้อง 1 ชิ้น", "Share one snack with a friend or sibling"),
+  T("พูดขอบคุณคนที่ทำอาหารให้เรากิน", "Say thank you to whoever cooked your food"),
+  T("เก็บขยะ 3 ชิ้นที่ไม่ใช่ของเรา", "Pick up 3 bits of litter that aren't yours"),
+  T("ให้อาหารสัตว์เลี้ยงหรือรดน้ำต้นไม้", "Feed a pet or water a plant"),
+  T("พูดความจริง แม้จะยาก", "Tell the truth, even when it's hard"),
+  T("ชมเพื่อน 1 คนอย่างจริงใจ", "Give one friend a real compliment"),
+  T("ยิ้มและทักทายทุกคนในบ้านตอนเช้า", "Smile and say good morning to everyone at home"),
+  T("ไม่เล่นมือถือหรือเกมระหว่างกินข้าว", "No phone or games during meals"),
+  T("จัดของเล่นหรือโต๊ะเรียนให้เรียบร้อย", "Tidy up your toys or your desk"),
+  T("เวลาโกรธ ให้นับ 1 ถึง 10 ช้า ๆ ก่อนพูด", "When you're angry, count slowly to 10 before you speak"),
+  T("ช่วยคนที่ถือของหนัก", "Help someone carry something heavy"),
+  T("ขอโทษคนที่เราทำให้เสียใจ", "Say sorry to someone you upset"),
+  T("ดีใจด้วยเมื่อเพื่อนทำได้ดี", "Be happy for a friend who did well"),
+  T("อ่านหนังสือให้น้องหรือคุณยายฟัง", "Read a book to a younger child or a grandparent"),
+  T("ปิดไฟและปิดน้ำเมื่อไม่ได้ใช้", "Switch off lights and taps you're not using"),
+  T("ตั้งใจฟังคุณครูหรือผู้ใหญ่พูดจนจบ", "Listen to a teacher or grown-up until they finish"),
+  T("ใส่บาตรหรือช่วยเตรียมของทำบุญกับครอบครัว", "Give alms, or help your family prepare offerings"),
+  T("ก่อนนอน นึกถึงความดี 3 อย่างที่ทำวันนี้", "Before bed, remember 3 good things you did today"),
+];
+const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const dayNumber = (d) => Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
+
+function Missions({ onBloom }) {
+  const t = useT(); const lang = useContext(LangCtx);
+  const today = new Date();
+  const todayKey = dayKey(today);
+  const mission = MISSIONS[dayNumber(today) % MISSIONS.length];
+  const [log, setLog] = useState(() => store.get("missions", {}));
+  const [asking, setAsking] = useState(false);
+  useEffect(() => store.set("missions", log), [log]);
+  const doneToday = !!log[todayKey];
+  const days = Array.from({ length: 14 }, (_, k) => { const d = new Date(today); d.setDate(d.getDate() - 13 + k); return d; });
+  let streak = 0;
+  for (let k = 0; k < 400; k++) { const d = new Date(today); d.setDate(d.getDate() - k); if (log[dayKey(d)]) streak++; else if (k > 0) break; }
+  const total = Object.keys(log).length;
+  return (
+    <section className="missions" aria-labelledby="mission-h">
+      <div className="mission-card">
+        <img className="mission-nen" src={IMG.wave} alt="" />
+        <div className="mission-body">
+          <span className="eyebrow" id="mission-h">{t(T("ภารกิจความดีวันนี้", "Today's good-deed mission"))}</span>
+          <p className="mission-text">{t(mission)}</p>
+          <div className="row">
+            <button className="icon-btn" onClick={() => { audio(); speak(t(mission), lang); }} aria-label={t(T("ฟังเสียง", "Listen"))}>
+              <svg viewBox="0 0 24 24" width="20" height="20"><path d="M4 9v6h4l5 4V5L8 9H4z" /><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" strokeWidth="2" /></svg>
+            </button>
+            {doneToday ? <span className="pill done-pill">{t(T("ทำแล้ววันนี้ เก่งมาก!", "Done today. Well done!"))}</span>
+              : !asking ? <button className="btn" onClick={() => { audio(); setAsking(true); }}>{t(T("หนูทำแล้ว!", "I did it!"))}</button>
+              : <span className="confirm">
+                  <span>{t(T("ทำจริงใช่ไหม? ซื่อสัตย์กับตัวเองนะ (ศีลข้อ 4!)", "Really done? Be honest with yourself (precept 4!)"))}</span>
+                  <button className="btn good" onClick={() => { setLog({ ...log, [todayKey]: true }); setAsking(false); sfx.fanfare(); onBloom(); }}>{t(T("ใช่ ทำจริง", "Yes, really"))}</button>
+                  <button className="btn ghost-btn" onClick={() => setAsking(false)}>{t(T("ยังเลย", "Not yet"))}</button>
+                </span>}
+          </div>
+          <p className="small">{t(T("ภารกิจใหม่ทุกวัน ทำในชีวิตจริง แล้วกลับมากดบอกเณรนะ", "A new mission every day. Do it in real life, then come back and tell Tonboon."))}</p>
+        </div>
+      </div>
+      <div className="pond" aria-label={t(T("บ่อบัว 14 วันล่าสุด", "Lotus pond, last 14 days"))}>
+        <div className="pond-head">
+          <strong>{t(T("บ่อบัวของหนู", "Your lotus pond"))}</strong>
+          <span>{t(T(`ทำต่อเนื่อง ${streak} วัน · รวม ${total} ภารกิจ`, `${streak}-day streak · ${total} missions in all`))}</span>
+        </div>
+        <ol className="pads">
+          {days.map((d) => { const on = !!log[dayKey(d)]; const isToday = dayKey(d) === todayKey; return (
+            <li key={dayKey(d)} className={"pad" + (on ? " on" : "") + (isToday ? " today" : "")}>
+              {on ? <Lotus size={30} /> : <span className="leaf-pad" />}
+              <span className="pad-day">{d.getDate()}</span>
+            </li>); })}
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- Jataka theatre ---------- */
+const JATAKAS = [
+  { n: T("เตมีย์", "Temiya"), v: T("เนกขัมมะ · การไม่ยึดติด", "Renunciation") },
+  { n: T("มหาชนก", "Mahajanaka"), v: T("วิริยะ · ความเพียร", "Perseverance"), ep: "mahajanaka" },
+  { n: T("สุวรรณสาม", "Suvannasama"), v: T("เมตตา · ความรักความปรารถนาดี", "Loving-kindness") },
+  { n: T("เนมิราช", "Nemi"), v: T("อธิษฐาน · ความตั้งใจมั่น", "Determination") },
+  { n: T("มโหสถ", "Mahosadha"), v: T("ปัญญา · ความรอบรู้", "Wisdom") },
+  { n: T("ภูริทัต", "Bhuridatta"), v: T("ศีล · การรักษาความดี", "Moral conduct") },
+  { n: T("จันทกุมาร", "Candakumara"), v: T("ขันติ · ความอดทน", "Patience") },
+  { n: T("พรหมนารท", "Narada"), v: T("อุเบกขา · ใจเป็นกลาง", "Equanimity") },
+  { n: T("วิธุรบัณฑิต", "Vidhura"), v: T("สัจจะ · ความจริง", "Truthfulness") },
+  { n: T("เวสสันดร", "Vessantara"), v: T("ทาน · การให้", "Generosity") },
+];
+
+function Theatre({ open, badges }) {
+  const t = useT();
+  return (
+    <section className="theatre">
+      <h2>{t(T("โรงละครนิทานชาดก", "Jataka Theatre"))}</h2>
+      <p className="theatre-sub">{t(T("ทศชาติชาดก: 10 ชาติสุดท้ายของพระโพธิสัตว์ แต่ละเรื่องฝึกความดีหนึ่งอย่าง", "The Ten Jatakas: the Buddha's last ten lives, each one practising a different good quality"))}</p>
+      <ol className="shelf">
+        {JATAKAS.map((j, k) => (
+          <li key={k}>
+            {j.ep ? (
+              <button className={"ep-card live" + (badges.includes(j.ep) ? " got" : "")} onClick={() => open(j.ep)}>
+                <img src="img/jataka-mahajanaka-3.webp" alt="" />
+                <span className="ep-num">{k + 1}</span>
+                <span className="ep-name">{t(j.n)}</span>
+                <span className="ep-virtue">{t(j.v)}</span>
+                <span className="ep-cta">{badges.includes(j.ep) ? t(T("ได้ดาวแล้ว ★ ดูอีกครั้ง", "Star earned ★ Watch again")) : t(T("▶ ดูเลย", "▶ Watch now"))}</span>
+              </button>
+            ) : (
+              <div className="ep-card soon" aria-disabled="true">
+                <span className="ep-num">{k + 1}</span>
+                <span className="ep-name">{t(j.n)}</span>
+                <span className="ep-virtue">{t(j.v)}</span>
+                <span className="ep-cta">{t(T("เร็ว ๆ นี้", "Coming soon"))}</span>
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function Episode({ onDone, onBack }) {
+  const t = useT(); const lang = useContext(LangCtx);
+  const qs = [
+    { q: T("หนูซ้อมเตะฟุตบอลมาทั้งเดือน แต่ยังยิงไม่เข้าประตูเลย หนูจะทำยังไง?", "You've practised football for a whole month and still can't score. What do you do?"),
+      o: [T("เลิกเล่นเลย ไม่เก่งก็ช่างมัน", "Quit. Who cares if I'm bad"), T("ซ้อมต่อทีละนิด และขอให้โค้ชช่วยดู", "Keep practising a little at a time and ask the coach for tips"), T("โทษว่าลูกบอลมันกลมเกินไป", "Blame the ball for being too round")], a: 1,
+      ok: T("ใช่เลย! นี่แหละความเพียรแบบพระมหาชนก ว่ายต่อไปแม้ยังไม่เห็นฝั่ง", "Yes! That's Mahajanaka-style perseverance: keep swimming even before you can see the shore.") },
+    { q: T("พระมหาชนกว่ายน้ำอยู่กลางทะเลนานเท่าไร?", "How long did Mahajanaka swim in the ocean?"),
+      o: [T("1 ชั่วโมง", "1 hour"), T("7 วัน 7 คืน", "7 days and 7 nights"), T("100 ปี", "100 years")], a: 1,
+      ok: T("ถูกต้อง! 7 วัน 7 คืน โดยไม่ยอมแพ้", "Correct! Seven days and nights without giving up.") },
+    { q: T("เจ้าตูบบอกว่าเขา “เพียร” ขอไก่ทอดทุกวัน อันนี้คือความเพียรไหม?", "Tup says he “perseveres” at begging for fried chicken every day. Is that perseverance?"),
+      o: [T("ใช่ เพราะเขาขอทุกวัน", "Yes, he asks every day"), T("ไม่ใช่ อันนั้นคือความอยาก ความเพียรคือการพยายามทำสิ่งที่ดี", "No, that's craving. Perseverance means keeping at something good")], a: 1,
+      ok: T("เก่งมาก! ความเพียรคือพยายามทำความดี ส่วนอยากได้ไม่หยุดคือ “ตัณหา” ที่เราเรียนในด่านคุณหมอเณร", "Great! Perseverance is sticking with something good. Wanting non-stop is craving, which we met with Doctor Novice.") },
+  ];
+  const [ans, setAns] = useState({});
+  const allRight = qs.every((q, k) => ans[k] === q.a);
+  useEffect(() => { if (allRight) { sfx.fanfare(); onDone(); } }, [allRight]);
+  return (
+    <main className="chapter episode col-blue">
+      <div className="ch-head">
+        <button className="btn ghost-btn" onClick={onBack}>{t(T("◀ หน้าแรก", "◀ Home"))}</button>
+        <div>
+          <span className="eyebrow">{t(T("นิทานชาดก เรื่องที่ 2 · วิริยะ ความเพียร", "Jataka 2 · Perseverance"))}</span>
+          <h1>{t(T("พระมหาชนก", "Mahajanaka"))}</h1>
+        </div>
+      </div>
+      <Narrator pose="wave" compact lines={[
+        T("ทศชาติชาดก คือเรื่องเล่า 10 ชาติสุดท้ายของพระโพธิสัตว์ ก่อนจะมาเกิดเป็นเจ้าชายสิทธัตถะ แต่ละชาติท่านฝึกความดีคนละอย่าง", "The Ten Jatakas tell the Buddha's last ten lives before he was born as Prince Siddhartha. In each life he practised a different good quality."),
+        T("เรื่องนี้คือ “พระมหาชนก” เรื่องของความเพียร กดเล่นวิดีโอแล้วดูไปพร้อมกันเลย!", "This one is Mahajanaka, a story about perseverance. Press play and let's watch together!"),
+        { ...T("ผมเตรียมป๊อปคอร์นไว้แล้วครับ!", "I've got the popcorn ready!"), who: "tup" },
+      ]} />
+      <div className="ep-player">
+        <video key={lang} src={`video/mahajanaka-${lang}.mp4`} poster="video/mahajanaka.webp" controls playsInline preload="metadata"
+          onPlay={() => { audio(); stopVoice(); }} />
+      </div>
+      <div className="quiz-list">
+        <h2 className="ep-q-head">{t(T("ถ้าเป็นหนู จะทำยังไง?", "What would you do?"))}</h2>
+        {qs.map((q, k) => (
+          <div key={k} className="quiz-box">
+            <h3><span className="qn">{k + 1}</span>{t(q.q)}</h3>
+            <div className="choices">
+              {q.o.map((o, j) => (
+                <button key={j} className={"choice" + (ans[k] === j ? (j === q.a ? " right" : " wrong") : "")}
+                  onClick={() => { setAns({ ...ans, [k]: j }); j === q.a ? sfx.ding() : sfx.boing(); }}>{t(o)}</button>
+              ))}
+            </div>
+            {ans[k] === q.a && <p className="feedback just">{t(q.ok)}</p>}
+          </div>
+        ))}
+        {allRight && <div className="done-banner" role="status"><span className="star">★</span><div><strong>{t(T("ได้ดาวความเพียรแล้ว!", "You earned the Perseverance Star!"))}</strong><span>{t(T("ลองทำภารกิจความดีวันนี้ด้วยความเพียรนะ", "Now try today's good-deed mission with the same perseverance."))}</span></div><button className="btn big" onClick={onBack}>{t(T("กลับหน้าแรก", "Back home"))}</button></div>}
+      </div>
+    </main>
+  );
+}
+
 /* ---------- HyperFrames video pieces ---------- */
 const VID = { intro: "video/intro.mp4", poster: "video/intro-poster.webp", bloom: "video/bloom.mp4", card: (k) => `video/card-${k + 1}.mp4`, still: (k) => `video/card-${k + 1}.webp` };
 
@@ -613,7 +807,7 @@ function Curtain({ src, poster, onDone }) {
 }
 
 // Lotus bloom pop-up when a stop is completed.
-function Bloom({ onDone }) {
+function Bloom({ onDone, label }) {
   const t = useT();
   const vref = useRef(null);
   useAutoplay(vref);
@@ -622,7 +816,7 @@ function Bloom({ onDone }) {
     <div className="bloom" onClick={onDone} role="status">
       <div className="bloom-card">
         <video ref={vref} src={VID.bloom} poster="video/bloom.webp" muted playsInline />
-        <strong>{t(T("ได้ดอกบัวแล้ว!", "You earned a lotus!"))}</strong>
+        <strong>{t(label || T("ได้ดอกบัวแล้ว!", "You earned a lotus!"))}</strong>
       </div>
     </div>
   );
@@ -663,18 +857,22 @@ function App() {
   const [mute, setMute] = useState(false);
   const [curtain, setCurtain] = useState(null);
   const [bloom, setBloom] = useState(false);
+  const [episode, setEpisode] = useState(null);
+  const [badges, setBadges] = useState(() => store.get("badges", []));
+  useEffect(() => store.set("badges", badges), [badges]);
+  const openEpisode = (id) => { audio(); stopVoice(); setCur(null); setEpisode(id); setTimeout(() => top.current && top.current.scrollIntoView({ behavior: "auto" }), 0); };
   const top = useRef(null);
   const doneRef = useRef(done);
   doneRef.current = done;
   useEffect(() => store.set("lang", lang), [lang]);
   useEffect(() => store.set("done", done), [done]);
   useEffect(() => store.set("name", name), [name]);
-  useEffect(() => { muted = mute; if (mute) try { speechSynthesis.cancel(); } catch (e) {} }, [mute]);
+  useEffect(() => { muted = mute; if (mute) stopVoice(); }, [mute]);
   useEffect(() => { document.documentElement.lang = lang; }, [lang]);
   const t = (x) => x[lang];
   const go = (k) => {
-    audio(); try { speechSynthesis.cancel(); } catch (e) {}
-    setCur(k); setBloom(false);
+    audio(); stopVoice();
+    setCur(k); setBloom(false); setEpisode(null);
     if (k != null && !reduced()) { setCurtain(k); sfx.pop(); }
     setTimeout(() => top.current && top.current.scrollIntoView({ behavior: "auto" }), 0);
   };
@@ -703,7 +901,9 @@ function App() {
         </div>
       </header>
 
-      {!ch ? (
+      {episode ? (
+        <Episode key={lang} onBack={() => go(null)} onDone={() => { if (!badges.includes(episode)) { setBadges([...badges, episode]); if (!reduced()) setBloom(T("ได้ดาวความเพียร!", "Perseverance Star!")); } }} />
+      ) : !ch ? (
         <main>
           <section className="hero">
             <HeroFilm />
@@ -716,6 +916,8 @@ function App() {
               </button>
             </div>
           </section>
+
+          <Missions onBloom={() => { if (!reduced()) setBloom(T("ปลูกบัวในบ่อแล้ว!", "A lotus for your pond!")); }} />
 
           <section className="map">
             <h2>{t(T("แผนที่การผจญภัย", "Adventure map"))}</h2>
@@ -739,6 +941,7 @@ function App() {
               ))}
             </ol>
           </section>
+          <Theatre open={openEpisode} badges={badges} />
           <footer className="foot">
             <p>{t(T("สำหรับเด็กอายุประมาณ 8–12 ปี · ผู้ปกครองและคุณครูใช้ประกอบการสอนวิชาพระพุทธศาสนาได้", "For kids aged about 8–12 · Parents and teachers can use it alongside Buddhism lessons"))}</p>
           </footer>
@@ -757,7 +960,7 @@ function App() {
         </main>
       )}
       {curtain != null && <Curtain key={curtain} src={VID.card(curtain)} poster={VID.still(curtain)} onDone={() => setCurtain(null)} />}
-      {bloom && curtain == null && <Bloom onDone={() => setBloom(false)} />}
+      {bloom && curtain == null && <Bloom label={bloom === true ? null : bloom} onDone={() => setBloom(false)} />}
     </LangCtx.Provider>
   );
 }
