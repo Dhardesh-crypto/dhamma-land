@@ -137,6 +137,80 @@ button:focus-visible, input:focus-visible { outline: 3px dashed var(--saffron-de
 button.tup-line { text-align: left; font: inherit; cursor: pointer; }
 button.tup-line:hover { background: #ffe6bd; }
 
+/* wheel of causes */
+.wheel-area { margin-top: 38px; }
+.wheel-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.wheel-head h2 { font-size: 2rem; }
+.pill.level { background: #e9ddf7; }
+.wheel-lessons { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.wl-card { width: 100%; height: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center; gap: 6px 10px; text-align: left; padding: 0 12px 12px; border: var(--line); border-radius: 18px; background: var(--cream); box-shadow: var(--pop); overflow: hidden; }
+.wl-card img { grid-column: 1 / -1; width: calc(100% + 24px); margin: 0 -12px 4px; height: 120px; max-width: none; object-fit: contain; object-position: bottom; background: linear-gradient(#f4ecff, #e9ddf7); border-bottom: var(--line); }
+.wl-card:hover { transform: translate(-2px, -3px); }
+.wl-num { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: #9b7fd1; color: var(--cream); border: 2px solid var(--ink); font-family: var(--display); }
+.wl-text { display: flex; flex-direction: column; min-width: 0; }
+.wl-title { font-family: var(--display); font-size: 1.15rem; line-height: 1.2; }
+.wl-sub { font-size: .88rem; color: var(--muted); }
+.wl-star { font-size: 1.6rem; color: #cbbfa8; line-height: 1; }
+.wl-card.got .wl-star { color: var(--gold); -webkit-text-stroke: 1px var(--ink); }
+.wheel-lesson { --c: #9b7fd1; }
+.teacher-note { background: #f4ecff; border: 2px dashed #9b7fd1; border-radius: 14px; padding: 10px 14px; max-width: 820px; }
+.teacher-note summary { cursor: pointer; font-family: var(--display); }
+.teacher-note p { margin-top: 8px; max-width: 70ch; }
+.moment { background: var(--cream); border: var(--line); border-radius: 24px; box-shadow: 6px 6px 0 var(--ink); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.moment-cap { font-family: var(--display); color: var(--saffron-deep); }
+.khandhas { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.khandha { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left; padding: 12px; border: var(--line); border-radius: 18px; background: color-mix(in srgb, var(--k) 18%, var(--cream)); border-top: 10px solid var(--k); min-height: 150px; min-width: 0; }
+.khandha.open { background: color-mix(in srgb, var(--k) 30%, var(--cream)); }
+.k-num { font-family: var(--display); font-size: .9rem; color: var(--muted); }
+.k-name { font-family: var(--display); font-size: 1.5rem; line-height: 1.1; }
+.k-pali { font-style: italic; font-size: .9rem; color: var(--muted); }
+.k-mean { font-weight: 700; font-size: .95rem; }
+.k-ex { font-size: .92rem; }
+.k-tap { margin-top: auto; font-size: .9rem; color: var(--muted); }
+.big-idea { background: #fff7d6; border: var(--line); border-radius: 20px; padding: 14px 18px; box-shadow: var(--pop); max-width: 820px; }
+.big-idea strong { font-family: var(--display); font-weight: 400; font-size: 1.3rem; color: var(--saffron-deep); }
+.big-idea p { max-width: 70ch; }
+.choices.center { justify-content: center; }
+.choices.col { flex-direction: column; align-items: stretch; width: 100%; max-width: 560px; }
+.scenario.sorter, .wheel-lesson .scenario { min-height: 0; }
+.links-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: center; }
+.wheel-svg { width: 100%; max-width: 440px; height: auto; justify-self: center; }
+.seg path { fill: #efe6ff; stroke: var(--ink); stroke-width: 2.5; transition: fill .2s; }
+.seg.hot path { fill: #ffd9cf; }
+.seg.seen path { fill: #d9c8f7; }
+.seg.hot.seen path { fill: #ffb8a6; }
+.seg.sel path { fill: var(--gold); }
+.seg { cursor: pointer; outline: none; }
+.seg:hover path, .seg:focus-visible path { fill: #fff0b3; }
+.seg text { text-anchor: middle; fill: var(--ink); pointer-events: none; }
+.seg-num { font-family: var(--display); font-size: 13px; }
+.seg-name { font-family: var(--display); font-size: 15px; }
+.hub { fill: var(--cream); stroke: var(--ink); stroke-width: 2.5; }
+.hub-t { text-anchor: middle; font-family: var(--display); font-size: 20px; fill: var(--ink); }
+.hub-s { text-anchor: middle; font-family: var(--display); font-size: 18px; fill: var(--muted); }
+.link-panel { background: var(--cream); border: var(--line); border-radius: 22px; box-shadow: 6px 6px 0 var(--ink); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; min-height: 260px; min-width: 0; }
+.lp-head { display: flex; gap: 12px; align-items: center; }
+.lp-num { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: #9b7fd1; color: var(--cream); border: var(--line); font-family: var(--display); font-size: 1.4rem; flex: none; }
+.lp-head h3 { font-size: 1.9rem; }
+.lp-pali { font-style: italic; color: var(--muted); }
+.lp-mean { font-weight: 700; }
+.lp-ex { background: #fff0d6; border: 2px dashed #c79a4f; border-radius: 12px; padding: 8px 12px; }
+.lp-flow { font-family: var(--display); color: #6b4fb0; }
+.lp-empty { color: var(--muted); margin: auto 0; }
+.way-out { background: var(--cream); border: var(--line); border-radius: 24px; box-shadow: 6px 6px 0 var(--ink); padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; max-width: 820px; }
+.way-out h3 { font-size: 1.5rem; }
+.ladder { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column-reverse; gap: 6px; }
+.ladder button { width: 100%; display: flex; gap: 10px; align-items: center; text-align: left; padding: 8px 12px; border: 2px solid var(--ink); border-radius: 12px; background: var(--paper); font-size: 1rem; }
+.ladder button:disabled { cursor: default; opacity: .55; }
+.ladder li.next button { opacity: 1; background: #fff7d6; box-shadow: 3px 3px 0 var(--ink); }
+.ladder li.on button { opacity: 1; background: #d9f2dd; }
+.step-n { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--leaf); color: var(--cream); font-family: var(--display); border: 2px solid var(--ink); }
+.goal-card { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; align-items: stretch; max-width: 900px; }
+.goal-col { background: #ffe3dc; border: var(--line); border-radius: 20px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; box-shadow: var(--pop); }
+.goal-col.cool { background: #dff2fb; }
+.goal-tag { font-family: var(--display); font-size: 1.2rem; }
+.goal-arrow { align-self: center; font-family: var(--display); font-size: 2.4rem; }
+
 /* curtain + bloom overlays */
 .curtain { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(44, 26, 14, .82); animation: fadein .2s; cursor: pointer; }
 .curtain.leaving { animation: fadeout .28s forwards; }
@@ -309,6 +383,9 @@ button.tup-line:hover { background: #ffe6bd; }
   .hero { grid-template-columns: minmax(0, 1fr); }
   .missions { grid-template-columns: minmax(0, 1fr); }
   .shelf { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .wheel-lessons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .khandhas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .links-layout { grid-template-columns: minmax(0, 1fr); }
   .split, .final { grid-template-columns: minmax(0, 1fr); }
   .stops { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .story-card { grid-template-columns: minmax(0, 1fr); }
@@ -321,6 +398,10 @@ button.tup-line:hover { background: #ffe6bd; }
   .gems, .truths { grid-template-columns: minmax(0, 1fr); }
   .acts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wheel-lessons { grid-template-columns: minmax(0, 1fr); }
+  .khandhas { grid-template-columns: minmax(0, 1fr); }
+  .goal-card { grid-template-columns: minmax(0, 1fr); }
+  .goal-arrow { transform: rotate(90deg); justify-self: center; }
   .mission-card { grid-template-columns: 80px minmax(0, 1fr); }
   .mission-nen { width: 80px; height: 120px; }
   .mission-text { font-size: 1.3rem; }

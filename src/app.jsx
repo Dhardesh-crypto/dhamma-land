@@ -781,6 +781,404 @@ function Episode({ onDone, onBack }) {
   );
 }
 
+/* ---------- The Wheel of Causes (advanced: five aggregates + dependent origination) ---------- */
+const KHANDHAS = [
+  { th: "รูป", pali: "rūpa", c: "#7cb86a",
+    m: T("ร่างกายและสิ่งที่จับต้องได้ ซึ่งเปลี่ยนแปลงอยู่เสมอ", "The body and physical things, which are always changing"),
+    ex: T("ตาของผม และตัวขนฟู ๆ ของเจ้าส้ม", "My eyes, and Som's fluffy body") },
+  { th: "เวทนา", pali: "vedanā", c: "#f2b43c",
+    m: T("ความรู้สึก สุข ทุกข์ หรือเฉย ๆ", "Feeling: pleasant, painful or neutral"),
+    ex: T("รู้สึกสบายใจ “ชอบจัง!”", "A pleasant feeling: “I like this!”") },
+  { th: "สัญญา", pali: "saññā", c: "#4fb3c9",
+    m: T("การจำได้ หมายรู้ว่าสิ่งนี้คืออะไร", "Recognising and remembering what something is"),
+    ex: T("จำได้ว่า “นี่คือแมว ชื่อเจ้าส้ม ตัวที่ชอบนอนหน้าโบสถ์”", "Recognising: “That's a cat. It's Som, the one who naps by the temple hall.”") },
+  { th: "สังขาร", pali: "saṅkhāra", c: "#9b7fd1",
+    m: T("ความคิด ความตั้งใจ และนิสัยที่ปรุงแต่งการกระทำ", "Thoughts, intentions and habits that shape what we do"),
+    ex: T("คิดว่า “อยากอุ้มจัง!” แล้วตั้งใจเดินเข้าไปหา", "Thinking “I want to cuddle her!” and deciding to walk over") },
+  { th: "วิญญาณ", pali: "viññāṇa", c: "#e8795a",
+    m: T("การรู้แจ้งอารมณ์ ทางตา หู จมูก ลิ้น กาย ใจ", "Consciousness: the knowing, through eye, ear, nose, tongue, body or mind"),
+    ex: T("การรู้ว่ามีบางอย่างปรากฏทางตา คือ “การเห็น”", "The bare knowing that something appeared to the eye: seeing") },
+];
+
+const LINKS = [
+  { th: "อวิชชา", pali: "avijjā", m: T("ไม่รู้ความจริง ไม่เห็นว่าความอยากและการยึดถือนำมาซึ่งทุกข์", "Not seeing the truth: not realising that craving and clinging lead to suffering"),
+    ex: T("ผมคิดว่า “ถ้าได้หุ่นยนต์ตัวนั้น ผมจะมีความสุขตลอดไป”", "I believed: “If I get that robot, I'll be happy forever.”") },
+  { th: "สังขาร", pali: "saṅkhāra", m: T("ความเคยชินและเจตนาที่ปรุงแต่งใจ", "Habits and intentions that shape the mind"),
+    ex: T("ใจผมเคยชินกับการอยากได้ของใหม่", "My mind is used to wanting new things") },
+  { th: "วิญญาณ", pali: "viññāṇa", m: T("การรู้ทางตา หู จมูก ลิ้น กาย ใจ", "Knowing through eye, ear, nose, tongue, body and mind"),
+    ex: T("ตาเห็นหุ่นยนต์ในมือเพื่อน", "My eyes see the robot in my friend's hands") },
+  { th: "นามรูป", pali: "nāmarūpa", m: T("ใจกับกายทำงานร่วมกัน", "Mind and body working together"),
+    ex: T("ทั้งตัวทั้งใจหันไปสนใจหุ่นยนต์", "My whole body and mind turn towards the robot") },
+  { th: "สฬายตนะ", pali: "saḷāyatana", m: T("ช่องทางรับรู้ 6 ทาง: ตา หู จมูก ลิ้น กาย ใจ", "The six sense doors: eye, ear, nose, tongue, body, mind"),
+    ex: T("ตา หู และใจ เปิดรับเรื่องหุ่นยนต์เต็มที่", "My eyes, ears and mind are wide open to the robot") },
+  { th: "ผัสสะ", pali: "phassa", m: T("การกระทบ เมื่อช่องทาง สิ่งที่ถูกรู้ และการรู้ มาเจอกัน", "Contact: a sense door, an object and knowing meet"),
+    ex: T("ตา + หุ่นยนต์ + การเห็น มาเจอกัน “ปิ๊ง!”", "Eye + robot + seeing meet: “ping!”") },
+  { th: "เวทนา", pali: "vedanā", m: T("ความรู้สึก สุข ทุกข์ หรือเฉย ๆ", "Feeling: pleasant, painful or neutral"),
+    ex: T("รู้สึก “ว้าว!” ชอบมาก", "“Wow!” A pleasant feeling") },
+  { th: "ตัณหา", pali: "taṇhā", m: T("ความอยาก: อยากได้ อยากเป็น อยากไม่ให้เป็น", "Craving: wanting to have, to become, or for something not to be"),
+    ex: T("“อยากได้! อยากได้ตัวที่เท่กว่าของเพื่อนอีก!”", "“I want it! I want an even cooler one than his!”") },
+  { th: "อุปาทาน", pali: "upādāna", m: T("การยึดถือ จับไว้แน่นว่า “ต้องเป็นของฉัน”", "Clinging: holding on tight to “it has to be mine”"),
+    ex: T("“ฉันต้องมี ไม่งั้นฉันจะไม่มีความสุขเลย”", "“I have to have it, or I'll never be happy.”") },
+  { th: "ภพ", pali: "bhava", m: T("ความเป็น ใจเริ่มกลายเป็นอะไรบางอย่าง", "Becoming: the mind starts turning into something"),
+    ex: T("ใจกลายเป็น “เด็กที่ไม่มีหุ่นยนต์”", "My mind becomes “the kid without a robot”") },
+  { th: "ชาติ", pali: "jāti", m: T("การเกิด", "Birth"),
+    ex: T("“ตัวฉันผู้น่าสงสาร” เกิดขึ้นเต็มตัว", "A whole “poor me” is born") },
+  { th: "ชรามรณะ", pali: "jarāmaraṇa", m: T("ความแก่ ความตาย พร้อมความเศร้า เสียใจ คับแค้นใจ", "Ageing and death, with sorrow, grief and distress"),
+    ex: T("งอนแม่ อิจฉาเพื่อน ถึงได้มาก็กลัวพัง พอพังก็เสียใจ", "I sulk at Mum and envy my friend. Even if I get one, I worry it'll break, and I'm sad when it does") },
+];
+
+const WHEEL_LESSONS = [
+  { title: T("หนึ่งขณะ ห้าส่วน", "One Moment, Five Parts"), sub: T("ขันธ์ 5", "The five aggregates"), img: IMG.think },
+  { title: T("วงล้อ 12 ห่วง", "The 12-Link Wheel"), sub: T("ปฏิจจสมุปบาท", "Dependent origination"), img: IMG.think },
+  { title: T("หยุดวงล้อตรงไหนดี?", "Where Can the Wheel Stop?"), sub: T("ทางออกจากทุกข์", "The way out"), img: IMG.wave },
+  { title: T("ความดับไม่เหลือของทุกข์", "The End of Suffering"), sub: T("นิพพาน และแบบทดสอบ", "Nibbāna and review"), img: IMG.meditate },
+];
+
+function WheelArea({ open, stars }) {
+  const t = useT();
+  return (
+    <section className="wheel-area">
+      <div className="wheel-head">
+        <h2>{t(T("วงล้อเหตุปัจจัย", "The Wheel of Causes"))}</h2>
+        <span className="pill level">{t(T("ขั้นสูง · ป.5 ขึ้นไป", "Advanced · age 10+"))}</span>
+      </div>
+      <p className="theatre-sub">{t(T("ทำไมเราถึงทุกข์ และจะออกจากทุกข์ได้อย่างไร เรียนรู้ ขันธ์ 5 และ ปฏิจจสมุปบาท ทีละขั้น ผ่านเรื่องในชีวิตประจำวัน", "Why do we suffer, and how do we get free? Learn the five aggregates and dependent origination step by step, through everyday stories."))}</p>
+      <ol className="wheel-lessons">
+        {WHEEL_LESSONS.map((l, k) => (
+          <li key={k}>
+            <button className={"wl-card" + (stars.includes(k) ? " got" : "")} onClick={() => open(k)}>
+              <img src={l.img} alt="" />
+              <span className="wl-num">{k + 1}</span>
+              <span className="wl-text"><span className="wl-title">{t(l.title)}</span><span className="wl-sub">{t(l.sub)}</span></span>
+              <span className="wl-star" aria-label={stars.includes(k) ? t(T("เรียนแล้ว", "Done")) : ""}>{stars.includes(k) ? "★" : "☆"}</span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function TeacherNote({ children }) {
+  const t = useT();
+  return (
+    <details className="teacher-note">
+      <summary>{t(T("หมายเหตุสำหรับคุณครูและผู้ปกครอง", "Note for teachers and parents"))}</summary>
+      {children}
+    </details>
+  );
+}
+
+/* Lesson 1: the five aggregates in one moment */
+function LessonKhandha({ complete }) {
+  const t = useT(); const lang = useContext(LangCtx);
+  const [seen, setSeen] = useState([]);
+  const [pick, setPick] = useState(null);
+  const sort = [
+    { s: T("ขาที่มีแผลถลอก", "The leg with the scrape on it"), a: 0 },
+    { s: T("รู้สึกเจ็บแสบ", "It stings and hurts"), a: 1 },
+    { s: T("จำได้ว่า “แผลแบบนี้ ต้องล้างด้วยน้ำสะอาด”", "Remembering: “A cut like this needs washing with clean water”"), a: 2 },
+    { s: T("ตั้งใจว่าจะลุกขึ้นไปล้างแผล ไม่โวยวาย", "Deciding to get up and wash it, without making a fuss"), a: 3 },
+    { s: T("การรู้ว่ามีบางอย่างมากระทบที่ขา", "The knowing that something has touched the leg"), a: 4 },
+  ];
+  const [si, setSi] = useState(0);
+  const [res, setRes] = useState(null);
+  const allSeen = seen.length === 5;
+  const sorted = si >= sort.length;
+  useEffect(() => { if (allSeen && sorted) { sfx.fanfare(); complete(); } }, [allSeen, sorted]);
+  const choose = (k) => {
+    if (res) return; const ok = k === sort[si].a; setRes({ ok, k }); ok ? sfx.ding() : sfx.boing();
+  };
+  return (
+    <>
+      <Narrator pose="think" compact lines={[
+        T("รู้ไหม แค่เราเห็นแมวหนึ่งตัว ในใจก็เกิดอะไรขึ้นตั้งหลายอย่าง พระพุทธเจ้าทรงแบ่งชีวิตเราออกเป็น 5 ส่วน เรียกว่า “ขันธ์ 5”", "Did you know that just seeing one cat sets off lots of things inside you? The Buddha described a person as five parts, called the five aggregates."),
+        T("ลองดูตอนที่ผมเห็นเจ้าส้ม แมวของวัด แล้วแตะการ์ดทีละใบนะ", "Let's look at the moment I saw Som, the temple cat. Tap the cards one by one."),
+        { ...T("แมว?! ที่ไหน?! โฮ่ง!", "A cat?! Where?! Woof!"), who: "tup" },
+        T("ทั้ง 5 ส่วนนี้เกิดขึ้นพร้อมกันในขณะเดียว ไม่ได้เกิดทีละอย่าง และเปลี่ยนไปตลอดเวลา", "All five happen together in the same moment, not one after another, and they keep changing all the time."),
+      ]} />
+      <div className="moment">
+        <p className="moment-cap">{t(T("ขณะเดียว: เณรต้นบุญเห็นเจ้าส้ม", "One moment: Tonboon sees Som the cat"))}</p>
+        <div className="khandhas">
+          {KHANDHAS.map((k, i) => {
+            const open = seen.includes(i);
+            return (
+              <button key={i} className={"khandha" + (open ? " open" : "")} style={{ "--k": k.c }} aria-expanded={open}
+                onClick={() => { sfx.pop(); if (!open) setSeen([...seen, i]); speak((lang === "th" ? k.th : k.pali) + ". " + t(k.m), lang); }}>
+                <span className="k-num">{i + 1}</span>
+                <span className="k-name">{k.th}</span>
+                <span className="k-pali">{k.pali}</span>
+                {open ? <><span className="k-mean">{t(k.m)}</span><span className="k-ex">{t(k.ex)}</span></>
+                  : <span className="k-tap">{t(T("แตะเพื่อดู", "Tap to see"))}</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {allSeen && (
+        <div className="big-idea">
+          <strong>{t(T("ความลับสำคัญ", "The big idea"))}</strong>
+          <p>{t(T("ทั้ง 5 ส่วนนี้เปลี่ยนตลอด ร่างกายโต ความรู้สึกมาแล้วก็ไป ความคิดก็เปลี่ยน ถ้าเรายึดว่า “นี่คือฉัน ต้องเป็นอย่างที่ฉันอยาก” พอมันเปลี่ยน เราก็ทุกข์", "All five keep changing: bodies grow, feelings come and go, thoughts change. If we hold on to “this is me, and it must be how I want”, we suffer when it changes."))}</p>
+        </div>
+      )}
+      {allSeen && (
+        <div className="scenario sorter">
+          <p className="moment-cap">{t(T("ลองแยกเอง: หกล้มที่สนาม", "Your turn: falling over in the playground"))} · {Math.min(si + 1, sort.length)}/{sort.length}</p>
+          {!sorted ? (
+            <>
+              <p className="scn">{t(sort[si].s)}</p>
+              <div className="choices center">
+                {KHANDHAS.map((k, i) => (
+                  <button key={i} className={"choice" + (res && res.k === i ? (res.ok ? " right" : " wrong") : "")} onClick={() => choose(i)}>{k.th}</button>
+                ))}
+              </div>
+              {res && <>
+                <p className={"feedback " + (res.ok ? "just" : "tight")}>{res.ok ? t(T("ถูกต้อง! ", "Correct! ")) : t(T(`ยังไม่ใช่ นี่คือ “${KHANDHAS[sort[si].a].th}” `, `Not quite. This is ${KHANDHAS[sort[si].a].th} (${KHANDHAS[sort[si].a].pali}). `))}{t(KHANDHAS[sort[si].a].m)}</p>
+                <button className="btn" onClick={() => { setRes(null); setSi(si + 1); }}>{t(T("ข้อต่อไป ▶", "Next ▶"))}</button>
+              </>}
+            </>
+          ) : <p className="feedback just">{t(T("เก่งมาก! หนูแยกขันธ์ 5 ได้แล้ว", "Well done! You can tell the five aggregates apart."))}</p>}
+        </div>
+      )}
+      <TeacherNote>
+        <p>{t(T("ลำดับ รูป เวทนา สัญญา สังขาร วิญญาณ เป็นลำดับตามพระไตรปิฎก แต่ไม่ใช่ลำดับการเกิด ขันธ์ทั้ง 5 เกิดร่วมกันในทุกขณะ จึงไม่ควรวาดเป็นวงจรที่หมุนต่อกัน “สังขาร” ในขันธ์ 5 กว้างกว่า “สังขาร” ห่วงที่ 2 ของปฏิจจสมุปบาท แม้จะใช้คำเดียวกัน", "The order rūpa, vedanā, saññā, saṅkhāra, viññāṇa follows the Pali Canon, but it is not an order of arising: all five arise together in every moment, so they should not be drawn as a cycle. Saṅkhāra as an aggregate is broader than saṅkhāra as the second link of dependent origination, even though the word is the same."))}</p>
+      </TeacherNote>
+    </>
+  );
+}
+
+/* Lesson 2: the twelve links */
+function WheelSvg({ sel, seen, onPick }) {
+  const t = useT();
+  const R1 = 190, R0 = 112, C = 200;
+  const pt = (r, a) => [C + r * Math.sin(a), C - r * Math.cos(a)];
+  return (
+    <svg className="wheel-svg" viewBox="0 0 400 400" role="group" aria-label={t(T("วงล้อ 12 ห่วง", "The 12-link wheel"))}>
+      {LINKS.map((l, i) => {
+        const a0 = (i / 12) * Math.PI * 2 + 0.012, a1 = ((i + 1) / 12) * Math.PI * 2 - 0.012, am = (a0 + a1) / 2;
+        const [x0, y0] = pt(R1, a0), [x1, y1] = pt(R1, a1), [x2, y2] = pt(R0, a1), [x3, y3] = pt(R0, a0);
+        const [tx, ty] = pt((R0 + R1) / 2, am);
+        const cls = "seg" + (sel === i ? " sel" : "") + (seen.includes(i) ? " seen" : "") + (i >= 7 && i <= 8 ? " hot" : "");
+        return (
+          <g key={i} className={cls} tabIndex={0} role="button" aria-label={`${i + 1} ${l.th}`}
+            onClick={() => onPick(i)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(i); } }}>
+            <path d={`M${x0} ${y0} A${R1} ${R1} 0 0 1 ${x1} ${y1} L${x2} ${y2} A${R0} ${R0} 0 0 0 ${x3} ${y3}Z`} />
+            <text x={tx} y={ty - 6} className="seg-num">{i + 1}</text>
+            <text x={tx} y={ty + 13} className="seg-name">{l.th}</text>
+          </g>
+        );
+      })}
+      <circle cx={C} cy={C} r={R0 - 10} className="hub" />
+      <text x={C} y={C - 8} className="hub-t">{t(T("แตะห่วง", "Tap a link"))}</text>
+      <text x={C} y={C + 18} className="hub-s">{`${seen.length}/12`}</text>
+    </svg>
+  );
+}
+
+function LessonLinks({ complete }) {
+  const t = useT(); const lang = useContext(LangCtx);
+  const [sel, setSel] = useState(null);
+  const [seen, setSeen] = useState([]);
+  useEffect(() => { if (seen.length === 12) { sfx.fanfare(); complete(); } }, [seen.length]);
+  const pick = (i) => { audio(); sfx.pop(); setSel(i); if (!seen.includes(i)) setSeen([...seen, i]); speak((lang === "th" ? LINKS[i].th : LINKS[i].pali) + ". " + t(LINKS[i].m), lang); };
+  const l = sel != null ? LINKS[sel] : null;
+  return (
+    <>
+      <Narrator pose="think" compact lines={[
+        T("“ปฏิจจสมุปบาท” แปลว่า สิ่งต่าง ๆ เกิดขึ้นเพราะมีเหตุ เหมือนโดมิโน ตัวหนึ่งล้ม ตัวต่อไปก็ล้มตาม", "Dependent origination means things arise because of causes, like dominoes: when one falls, the next one follows."),
+        T("พระพุทธเจ้าทรงอธิบายว่า ความทุกข์ก็เกิดแบบนี้ เป็นสาย 12 ห่วง แตะแต่ละห่วงในวงล้อดูนะ", "The Buddha explained that suffering arises like this too, in a chain of 12 links. Tap each link on the wheel."),
+        T("ผมจะยกตัวอย่างตอนที่เห็นเพื่อนได้หุ่นยนต์ตัวใหม่ ใจผมหมุนไปตามวงล้อเลย", "I'll use the time my friend got a new robot toy. My mind spun right round the wheel."),
+        { ...T("ผมก็เคยนะ ตอนเห็นกระดูกของหมาข้างบ้าน", "Me too! When I saw the neighbour dog's bone."), who: "tup" },
+      ]} />
+      <div className="links-layout">
+        <WheelSvg sel={sel} seen={seen} onPick={pick} />
+        <div className="link-panel" aria-live="polite">
+          {l ? (
+            <>
+              <div className="lp-head">
+                <span className="lp-num">{sel + 1}</span>
+                <div><h3>{l.th}</h3><span className="lp-pali">{l.pali}</span></div>
+              </div>
+              <p className="lp-mean">{t(l.m)}</p>
+              <div className="lp-ex"><b>{t(T("ตัวอย่างของเณร:", "Tonboon's example:"))}</b> {t(l.ex)}</div>
+              <p className="lp-flow">{sel < 11
+                ? t(T(`เพราะมี “${l.th}” จึงมี “${LINKS[sel + 1].th}”`, `Because there is ${l.pali}, there is ${LINKS[sel + 1].pali}.`))
+                : t(T("และวงล้อก็หมุนต่อไป ถ้ายังไม่เห็นความจริง", "And the wheel keeps turning while the truth isn't seen."))}</p>
+              <div className="row">
+                <button className="btn ghost-btn" disabled={sel === 0} onClick={() => pick(sel - 1)}>{t(T("◀ ห่วงก่อน", "◀ Previous"))}</button>
+                {sel < 11 && <button className="btn" onClick={() => pick(sel + 1)}>{t(T("ห่วงถัดไป ▶", "Next link ▶"))}</button>}
+              </div>
+            </>
+          ) : (
+            <p className="lp-empty">{t(T("เริ่มที่ห่วงที่ 1 “อวิชชา” แล้วไล่ไปจนครบ 12 ห่วง ห่วงสีแดงคือจุดที่ไฟลุกง่ายที่สุด: ตัณหา กับ อุปาทาน", "Start with link 1, ignorance, and go round all 12. The red links are where the fire catches most easily: craving and clinging."))}</p>
+          )}
+        </div>
+      </div>
+      {seen.length === 12 && (
+        <div className="big-idea">
+          <strong>{t(T("สรุปเป็นภาษาง่าย ๆ", "In plain words"))}</strong>
+          <p>{t(T("กระทบ → รู้สึก → อยาก → ยึด → กลายเป็นตัวฉันที่ทุกข์ ห่วงที่ 6 ถึง 12 นี้ เราเห็นได้ในชีวิตจริงทุกวัน และ “อุปาทาน” ยึดอะไร? ยึดขันธ์ 5 ว่าเป็นตัวเรา ของเรา", "Contact → feeling → craving → clinging → a suffering “me”. You can watch links 6 to 12 happen in real life every day. And what does clinging hold on to? The five aggregates, as “me” and “mine”."))}</p>
+        </div>
+      )}
+      <TeacherNote>
+        <p>{t(T("ในพระไตรปิฎก “ชาติ” และ “ชรามรณะ” หมายถึงการเกิด แก่ และตาย ในภพชาติ ครูบาอาจารย์บางท่าน เช่น ท่านพุทธทาสภิกขุ อธิบายว่าวงจรนี้เกิดขึ้นในใจได้ในชีวิตประจำวัน ทุกครั้งที่ “ตัวฉัน” เกิดขึ้นด้วยความอยากและการยึดถือ ตัวอย่างในหน้านี้ใช้แบบหลังเพื่อให้เด็กเห็นได้ด้วยตนเอง คุณครูอาจเล่าความหมายแบบแรกเพิ่มเติมได้", "In the Pali Canon, birth and ageing-and-death refer to being born, growing old and dying across lives. Some Thai teachers, notably Buddhadāsa Bhikkhu, explain that the whole chain can also run in the mind in daily life, every time a “me” is born out of craving and clinging. The examples here use that second reading so children can observe it for themselves; teachers may add the traditional reading."))}</p>
+      </TeacherNote>
+    </>
+  );
+}
+
+/* Lesson 3: where the wheel can be broken */
+function LessonBreak({ complete }) {
+  const t = useT();
+  const cases = [
+    { s: T("เห็นเพื่อนได้หุ่นยนต์ใหม่ รู้สึกอยากได้มาก", "Your friend gets a new robot and you really want one"),
+      o: [T("ร้องไห้งอนแม่ จนกว่าจะซื้อให้", "Cry and sulk until Mum buys one"), T("รู้ทันว่า “อ๋อ ใจกำลังอยาก” แล้วดีใจกับเพื่อน", "Notice “Ah, my mind is wanting”, and be happy for your friend"), T("ไม่มองของใครอีกเลยตลอดชีวิต", "Never look at anyone's things ever again")], a: 1,
+      why: [T("แบบนี้วงล้อหมุนเต็มที่เลย ตัณหาพาไปถึงอุปาทาน", "That spins the wheel at full speed: craving leads straight to clinging."), T("เยี่ยม! รู้ทันเวทนา ไม่ไปกับตัณหา วงล้อหยุดตรงนี้เลย", "Great! You noticed the feeling and didn't follow the craving. The wheel stops right here."), T("หลบตาตลอดไปไม่ได้หรอก ตาก็ต้องเห็นอยู่ดี สิ่งที่ฝึกได้คือใจที่รู้ทัน", "You can't close your eyes forever. Eyes will see things anyway; what you can train is a mind that notices.")] },
+    { s: T("เพื่อนแซวว่าหนูวาดรูปไม่สวย รู้สึกโกรธ", "A friend teases you that your drawing is ugly, and you feel angry"),
+      o: [T("จำไว้ แล้วแกล้งคืนทีหลัง", "Remember it and get them back later"), T("ฉีกรูปทิ้ง บอกว่าจะไม่วาดอีกแล้ว", "Tear up the drawing and swear you'll never draw again"), T("หายใจลึก ๆ สังเกตว่าใจกำลังร้อน แล้วค่อยพูด", "Breathe deeply, notice your mind is heating up, then speak")], a: 2,
+      why: [T("ความโกรธกลายเป็นการยึดถือ และกลายเป็น “ตัวฉันผู้แค้น”", "The anger turns into clinging, and a “me who wants revenge” is born."), T("นี่คือ “อยากไม่ให้เป็น” ก็เป็นตัณหาเหมือนกัน แล้วเราก็เสียสิ่งที่เรารักไป", "That's craving too, the kind that wants something not to be, and you lose something you love."), T("ถูกต้อง! เวทนาที่ไม่สบายใจเกิดขึ้นได้ แต่ถ้ารู้ทัน มันก็ไม่ลามเป็นไฟ", "Right! An unpleasant feeling can arise, but if you notice it, it doesn't spread into a fire.")] },
+    { s: T("เล่นเกมแพ้ แล้วอยากเล่นใหม่ทันทีจนดึก", "You lose a game and want to keep playing late into the night"),
+      o: [T("รู้ว่าใจกำลังอยากชนะ ยอมรับว่าแพ้ได้ แล้วไปนอน", "Notice your mind wants to win, accept that losing happens, and go to bed"), T("เล่นต่อจนกว่าจะชนะ ถึงจะตีสอง", "Keep playing until you win, even at 2 a.m."), T("โทษว่าเกมโกง", "Blame the game for cheating")], a: 0,
+      why: [T("เก่งมาก! นี่แหละการรู้ทันตัณหา", "Brilliant! That's catching craving in the act."), T("ตัณหาลากเราไปจนเหนื่อยและง่วง แถมพรุ่งนี้ก็ยังอยากชนะอยู่ดี", "Craving drags you along until you're exhausted, and tomorrow you'll still want to win."), T("โทษคนอื่นทำให้ “ตัวฉันผู้ถูกโกง” เกิดขึ้น ใจยิ่งร้อน", "Blaming others gives birth to a “me who got cheated”, and the heat grows.")] },
+  ];
+  const steps = [
+    T("รู้ทันผัสสะ: รู้ตัวว่ามีอะไรมากระทบ", "Notice contact: know when something touches your senses"),
+    T("สังเกตเวทนา: รู้ว่ากำลังชอบ ไม่ชอบ หรือเฉย ๆ", "Watch the feeling: know if it's pleasant, unpleasant or neutral"),
+    T("ไม่ไปกับตัณหา: อยากได้ก็รู้ แต่ไม่วิ่งตาม", "Don't follow craving: notice the wanting, but don't chase it"),
+    T("ไม่ยึดถือ: ไม่จับไว้ว่า “ต้องเป็นของฉัน”", "Don't cling: don't grab hold of “it has to be mine”"),
+    T("ตัวฉันผู้ทุกข์ ไม่ได้ก่อตัวขึ้น (ภพดับ)", "A suffering “me” doesn't take shape (becoming ceases)"),
+    T("ไม่มี “ตัวฉันผู้น่าสงสาร” เกิดขึ้น (ชาติดับ)", "No “poor me” is born (birth ceases)"),
+    T("ความเศร้า เสียใจ คับแค้นใจ ก็ไม่เกิด ทุกข์ดับ", "Sorrow, grief and distress don't arise: suffering ends"),
+  ];
+  const [ci, setCi] = useState(0);
+  const [ans, setAns] = useState(null);
+  const [climb, setClimb] = useState(0);
+  const casesDone = ci >= cases.length;
+  useEffect(() => { if (casesDone && climb >= steps.length) { sfx.fanfare(); complete(); } }, [casesDone, climb]);
+  const c = cases[ci];
+  return (
+    <>
+      <Narrator pose="wave" compact lines={[
+        T("ข่าวดี! วงล้อนี้หยุดได้ ถ้าเราเห็นทันว่ามันกำลังหมุน", "Good news: the wheel can be stopped, if we notice it spinning in time."),
+        T("จุดที่ฝึกได้ง่ายที่สุดคือ ระหว่าง “เวทนา” กับ “ตัณหา” รู้สึกชอบได้ แต่ไม่ต้องวิ่งตามความอยาก", "The easiest place to practise is between feeling and craving. You can like something without chasing the wanting."),
+        T("ลองเลือกดูว่า ในแต่ละเรื่อง หนูจะหยุดวงล้ออย่างไร", "Let's see how you'd stop the wheel in each situation."),
+      ]} />
+      <div className="scenario">
+        {!casesDone ? (
+          <>
+            <p className="moment-cap">{t(T("สถานการณ์", "Situation"))} {ci + 1}/{cases.length}</p>
+            <p className="scn">{t(c.s)}</p>
+            <div className="choices col">
+              {c.o.map((o, j) => (
+                <button key={j} className={"choice" + (ans === j ? (j === c.a ? " right" : " wrong") : "")}
+                  onClick={() => { if (ans === c.a) return; setAns(j); j === c.a ? sfx.ding() : sfx.boing(); }}>{t(o)}</button>
+              ))}
+            </div>
+            {ans != null && <p className={"feedback " + (ans === c.a ? "just" : "tight")}>{t(c.why[ans])}</p>}
+            {ans === c.a && <button className="btn" onClick={() => { setAns(null); setCi(ci + 1); }}>{t(T("ต่อไป ▶", "Next ▶"))}</button>}
+          </>
+        ) : <p className="feedback just">{t(T("หนูหยุดวงล้อได้ทั้ง 3 ครั้งเลย!", "You stopped the wheel all three times!"))}</p>}
+      </div>
+      {casesDone && (
+        <div className="way-out">
+          <h3>{t(T("บันได 7 ขั้น สู่ทางออก", "Seven steps out"))}</h3>
+          <p className="small">{t(T("พระพุทธเจ้าทรงสอนว่า เมื่อเหตุดับ ผลก็ดับ ตัณหาดับ อุปาทานก็ดับ อุปาทานดับ ภพก็ดับ ไล่ไปจนทุกข์ดับ แตะเพื่อปีนทีละขั้น", "The Buddha taught that when the cause ends, the result ends: when craving ends, clinging ends; when clinging ends, becoming ends; and so on until suffering ends. Tap to climb one step at a time."))}</p>
+          <ol className="ladder">
+            {steps.map((s, k) => (
+              <li key={k} className={k < climb ? "on" : k === climb ? "next" : ""}>
+                <button disabled={k !== climb} onClick={() => { sfx.ding(); setClimb(climb + 1); }}>
+                  <span className="step-n">{k + 1}</span><span>{t(s)}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* Lesson 4: the goal and review */
+function LessonGoal({ complete }) {
+  const t = useT();
+  const qs = [
+    { q: T("ขันธ์ 5 มีอะไรบ้าง?", "What are the five aggregates?"), o: [T("รูป เวทนา สัญญา สังขาร วิญญาณ", "Body, feeling, recognition, mental formations, consciousness"), T("ตา หู จมูก ลิ้น กาย", "Eye, ear, nose, tongue, body"), T("ดิน น้ำ ลม ไฟ ฟ้า", "Earth, water, wind, fire, sky")], a: 0 },
+    { q: T("“จำได้ว่านี่คือแมวชื่อเจ้าส้ม” คือขันธ์ไหน?", "“Recognising that this is Som the cat” is which aggregate?"), o: [T("เวทนา", "Feeling"), T("สัญญา", "Recognition (saññā)"), T("รูป", "Body")], a: 1 },
+    { q: T("ขันธ์ทั้ง 5 เกิดขึ้นอย่างไร?", "How do the five aggregates arise?"), o: [T("ทีละอย่าง เรียงต่อกันเป็นวงกลม", "One at a time, in a circle"), T("พร้อมกันในทุกขณะ และเปลี่ยนตลอด", "Together in every moment, always changing"), T("ไม่เคยเปลี่ยนเลย", "They never change")], a: 1 },
+    { q: T("ในวงล้อ 12 ห่วง อะไรเกิดต่อจาก “เวทนา”?", "In the 12-link wheel, what comes after feeling?"), o: [T("ตัณหา", "Craving"), T("ชาติ", "Birth"), T("อวิชชา", "Ignorance")], a: 0 },
+    { q: T("“อุปาทาน” ยึดอะไรว่าเป็นตัวเรา ของเรา?", "What does clinging hold on to as “me” and “mine”?"), o: [T("ขันธ์ 5", "The five aggregates"), T("ไก่ทอด", "Fried chicken"), T("ไม่ยึดอะไรเลย", "Nothing at all")], a: 0 },
+    { q: T("“นิพพาน” คืออะไร?", "What is Nibbāna?"), o: [T("สวรรค์ชั้นสูงสุด", "The highest heaven"), T("ความดับไม่เหลือของทุกข์", "The complete ending of suffering"), T("ขันธ์ที่ 6", "A sixth aggregate")], a: 1 },
+  ];
+  const [ans, setAns] = useState({});
+  const allRight = qs.every((q, k) => ans[k] === q.a);
+  useEffect(() => { if (allRight) { sfx.fanfare(); complete(); } }, [allRight]);
+  return (
+    <>
+      <Narrator pose="meditate" compact lines={[
+        T("พระพุทธเจ้าตรัสว่า “เราสอนเพียงเรื่องทุกข์ และความดับไม่เหลือของทุกข์”", "The Buddha said: “I teach only suffering and the ending of suffering.”"),
+        T("ความดับไม่เหลือของทุกข์ เรียกว่า “นิพพาน” แปลว่า ดับ หรือเย็นสนิท ไม่ใช่สถานที่ ไม่ใช่สวรรค์ แต่คือใจที่ไม่ถูกไฟแห่งความอยากและการยึดถือเผาอีกแล้ว", "The complete ending of suffering is called Nibbāna, which means “going out” or “cooled”. It isn't a place or a heaven. It's a heart no longer burned by the fire of craving and clinging."),
+        T("เราเริ่มฝึกได้ตั้งแต่วันนี้ ทุกครั้งที่รู้ทันใจตัวเอง ทุกข์ก็เบาลงทีละนิด", "We can start practising today. Each time we catch our own mind, suffering gets a little lighter."),
+        { ...T("ผมจะเริ่มจากรู้ทันความอยากกินไก่ทอดก่อนแล้วกันครับ", "I'll start by catching my fried-chicken cravings."), who: "tup" },
+      ]} />
+      <div className="goal-card">
+        <div className="goal-col">
+          <span className="goal-tag">{t(T("ทุกข์และเหตุแห่งทุกข์", "Suffering and its cause"))}</span>
+          <p>{t(T("ไม่รู้ความจริง → อยาก → ยึดขันธ์ 5 ว่าเป็นตัวฉัน → ทุกข์ วงล้อหมุนไม่รู้จบ", "Not seeing the truth → craving → clinging to the five aggregates as “me” → suffering, round and round"))}</p>
+        </div>
+        <div className="goal-arrow" aria-hidden="true">→</div>
+        <div className="goal-col cool">
+          <span className="goal-tag">{t(T("ความดับทุกข์", "The end of suffering"))}</span>
+          <p>{t(T("เห็นเหตุ → คลายความยึดถือ → ทุกข์ดับ ด้วยการฝึกของตัวเราเอง", "See the causes → loosen clinging → suffering ends, through our own practice"))}</p>
+        </div>
+      </div>
+      <div className="quiz-list">
+        <h2 className="ep-q-head">{t(T("ทบทวนวงล้อ", "Wheel review"))}</h2>
+        {qs.map((q, k) => (
+          <div key={k} className="quiz-box">
+            <h3><span className="qn">{k + 1}</span>{t(q.q)}</h3>
+            <div className="choices">
+              {q.o.map((o, j) => (
+                <button key={j} className={"choice" + (ans[k] === j ? (j === q.a ? " right" : " wrong") : "")}
+                  onClick={() => { setAns({ ...ans, [k]: j }); j === q.a ? sfx.ding() : sfx.boing(); }}>{t(o)}</button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <TeacherNote>
+        <p>{t(T("ข้อความ “เราสอนเพียงเรื่องทุกข์ และความดับไม่เหลือของทุกข์” มาจากอลคัททูปมสูตร (มัชฌิมนิกาย มูลปัณณาสก์; MN 22) นิพพานไม่ใช่ขันธ์ใดขันธ์หนึ่ง แต่เป็นความพ้นจากการยึดถือขันธ์ทั้งปวง", "“I teach only suffering and the ending of suffering” comes from the Alagaddūpama Sutta (MN 22). Nibbāna is not one of the aggregates; it is freedom from clinging to all of them."))}</p>
+      </TeacherNote>
+    </>
+  );
+}
+
+const LESSON_PAGES = [LessonKhandha, LessonLinks, LessonBreak, LessonGoal];
+
+function WheelLesson({ k, onDone, onBack, onNext }) {
+  const t = useT();
+  const L = WHEEL_LESSONS[k], Page = LESSON_PAGES[k];
+  const [finished, setFinished] = useState(false);
+  return (
+    <main className="chapter wheel-lesson col-lotus">
+      <div className="ch-head">
+        <button className="btn ghost-btn" onClick={onBack}>{t(T("◀ หน้าแรก", "◀ Home"))}</button>
+        <div>
+          <span className="eyebrow">{t(T("วงล้อเหตุปัจจัย · บทที่", "Wheel of Causes · Lesson"))} {k + 1}/4 · {t(L.sub)}</span>
+          <h1>{t(L.title)}</h1>
+        </div>
+      </div>
+      <Page complete={() => { setFinished(true); onDone(); }} />
+      {finished && (
+        <div className="done-banner" role="status">
+          <span className="star">★</span>
+          <div><strong>{t(T("ได้ดาววงล้อธรรมแล้ว!", "Dhamma Wheel star earned!"))}</strong><span>{k < 3 ? t(T("ไปบทต่อไปกันเลย", "On to the next lesson")) : t(T("เรียนครบทั้งวงล้อแล้ว เก่งมาก!", "You've completed the whole wheel. Well done!"))}</span></div>
+          <button className="btn big" onClick={k < 3 ? onNext : onBack}>{k < 3 ? t(T("บทต่อไป ▶", "Next lesson ▶")) : t(T("กลับหน้าแรก", "Back home"))}</button>
+        </div>
+      )}
+    </main>
+  );
+}
+
 /* ---------- HyperFrames video pieces ---------- */
 const VID = { intro: "video/intro.mp4", poster: "video/intro-poster.webp", bloom: "video/bloom.mp4", card: (k) => `video/card-${k + 1}.mp4`, still: (k) => `video/card-${k + 1}.webp` };
 
@@ -858,9 +1256,13 @@ function App() {
   const [curtain, setCurtain] = useState(null);
   const [bloom, setBloom] = useState(false);
   const [episode, setEpisode] = useState(null);
+  const [lesson, setLesson] = useState(null);
+  const [wheelStars, setWheelStars] = useState(() => store.get("wheel", []));
+  useEffect(() => store.set("wheel", wheelStars), [wheelStars]);
+  const openLesson = (k) => { audio(); stopVoice(); setCur(null); setEpisode(null); setBloom(false); setLesson(k); setTimeout(() => top.current && top.current.scrollIntoView({ behavior: "auto" }), 0); };
   const [badges, setBadges] = useState(() => store.get("badges", []));
   useEffect(() => store.set("badges", badges), [badges]);
-  const openEpisode = (id) => { audio(); stopVoice(); setCur(null); setEpisode(id); setTimeout(() => top.current && top.current.scrollIntoView({ behavior: "auto" }), 0); };
+  const openEpisode = (id) => { audio(); stopVoice(); setCur(null); setLesson(null); setEpisode(id); setTimeout(() => top.current && top.current.scrollIntoView({ behavior: "auto" }), 0); };
   const top = useRef(null);
   const doneRef = useRef(done);
   doneRef.current = done;
@@ -872,7 +1274,7 @@ function App() {
   const t = (x) => x[lang];
   const go = (k) => {
     audio(); stopVoice();
-    setCur(k); setBloom(false); setEpisode(null);
+    setCur(k); setBloom(false); setEpisode(null); setLesson(null);
     if (k != null && !reduced()) { setCurtain(k); sfx.pop(); }
     setTimeout(() => top.current && top.current.scrollIntoView({ behavior: "auto" }), 0);
   };
@@ -901,7 +1303,10 @@ function App() {
         </div>
       </header>
 
-      {episode ? (
+      {lesson != null ? (
+        <WheelLesson key={lesson + lang} k={lesson} onBack={() => go(null)} onNext={() => openLesson(lesson + 1)}
+          onDone={() => { if (!wheelStars.includes(lesson)) { setWheelStars((w) => (w.includes(lesson) ? w : [...w, lesson])); if (!reduced()) setBloom(T("ได้ดาววงล้อธรรม!", "Dhamma Wheel star!")); } }} />
+      ) : episode ? (
         <Episode key={lang} onBack={() => go(null)} onDone={() => { if (!badges.includes(episode)) { setBadges([...badges, episode]); if (!reduced()) setBloom(T("ได้ดาวความเพียร!", "Perseverance Star!")); } }} />
       ) : !ch ? (
         <main>
@@ -942,6 +1347,7 @@ function App() {
             </ol>
           </section>
           <Theatre open={openEpisode} badges={badges} />
+          <WheelArea open={openLesson} stars={wheelStars} />
           <footer className="foot">
             <p>{t(T("สำหรับเด็กอายุประมาณ 8–12 ปี · ผู้ปกครองและคุณครูใช้ประกอบการสอนวิชาพระพุทธศาสนาได้", "For kids aged about 8–12 · Parents and teachers can use it alongside Buddhism lessons"))}</p>
           </footer>

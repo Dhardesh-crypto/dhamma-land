@@ -20,6 +20,7 @@ Beyond the 9 stops:
 
 - **Recorded voices.** Tonboon and Tup speak every narrator line, story slide and mission in Thai and English (126 recordings). Lines play automatically as the child moves through a stop; anything without a recording falls back to the device's speech voice.
 - **Daily good-deed missions (ภารกิจความดี).** One real-life mission a day from a list of 21. The child confirms it honestly (a nudge to precept 4), and a lotus grows in a 14-day pond with a streak counter.
+- **The Wheel of Causes (วงล้อเหตุปัจจัย), advanced, age 10+.** Four lessons on the five aggregates and dependent origination: the five aggregates in one moment of seeing a cat, a clickable 12-link wheel with an everyday example for every link, everyday dilemmas about where the wheel can be broken plus the seven steps out, and Nibbāna with a review quiz. Each lesson has a note for teachers. Narration currently uses the device voice; the lines are listed by `src/voice_lines.py` for recording later.
 - **Jataka Theatre (โรงละครนิทานชาดก).** All ten Jatakas with the perfection each one teaches. Episode 2, **พระมหาชนก** (perseverance), is a narrated 1½-minute animated film in Thai and English, followed by three "what would you do?" questions that earn a Perseverance Star. The other nine are marked as coming soon.
 
 Thai by default, with an English toggle. Sound effects are generated in the browser. Progress, missions and stars are saved in the browser only.
